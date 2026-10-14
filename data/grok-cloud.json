@@ -1,6 +1,6 @@
 {
  "machine": "grok-cloud",
- "collected_at": "2026-10-14T16:18:21.663031+00:00",
+ "collected_at": "2026-10-14T17:36:25.449555+00:00",
  "codex": {
   "observed_at": "2026-10-14T09:22:30.554Z",
   "windows": [
@@ -53,7 +53,7 @@
  },
  "claude": {
   "observed_at": "2026-10-14T16:17:47.344000+00:00",
-  "tokens_last_5h": 410760,
+  "tokens_last_5h": 302528,
   "tokens_today": 302528,
   "output_tokens_today": 2808,
   "output_tokens_7d": 262370,
@@ -96,7 +96,7 @@
   ]
  },
  "antigravity": {
-  "observed_at": "2026-10-14T16:18:24.919261+00:00",
+  "observed_at": "2026-10-14T17:36:29.355963+00:00",
   "buckets": [
    {
     "group": "Gemini Models",
@@ -108,19 +108,19 @@
     "group": "Gemini Models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-14T21:18:24Z"
+    "resets_at": "2026-10-14T22:36:29Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "weekly",
     "used_percent": 0,
-    "resets_at": "2026-10-21T16:18:24Z"
+    "resets_at": "2026-10-21T17:36:29Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-14T21:18:24Z"
+    "resets_at": "2026-10-14T22:36:29Z"
    }
   ]
  }
