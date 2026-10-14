@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="额度监控">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/app-180.png">
+<link rel="icon" href="icons/app-180.png">
+<title>Agent 额度监控</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* 布局：横屏 = 左侧四个额度环 + 右侧 token 总量面板，铺满一屏不滚动；竖屏 = 依次堆叠可滚动 */
+:root {
+  --bg: #0e1116;
+  --panel: #151a21;
+  --panel-2: #1b212a;
+  --ink: #eef1f5;
+  --ink-2: #aab3bf;
+  --ink-3: #6f7a88;
+  --line: #262d37;
+  --track: #232a34;
+  --good: #3ccf91;
+  --warn: #f4b740;
+  --crit: #ff6b6b;
+  --c-openai: #10a37f;
+  --c-codex: #6d7cff;
+  --c-claude: #e08a68;
+  --c-grok: #d9dde3;
+  --c-agy-a: #4f8bff;
+  --c-agy-b: #ff7a45;
+  --font-sans: "Figtree", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #eef1f4; --panel: #ffffff; --panel-2: #f5f7f9; --ink: #141920; --ink-2: #4d5866; --ink-3: #808b98;
+    --line: #dde2e8; --track: #e6eaef; --good: #17935f; --warn: #b07400; --crit: #d23c3c;
+    --c-openai: #0d8a6a; --c-codex: #5160f0; --c-claude: #c9643f; --c-grok: #3a3f47;
+    color-scheme: light;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.45;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+  -webkit-font-smoothing: antialiased;
+}
+.app { min-height: 100%; display: grid; grid-template-rows: auto 1fr; gap: 14px; padding-block: 14px; max-width: 1400px; margin: 0 auto; }
+
+/* 顶栏 */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 12px; }
+.brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: 0.01em; }
+.clock { font-family: var(--font-num); font-size: 15px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.status { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); }
+.src { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.dot.ok { background: var(--good); }
+.dot.stale { background: var(--warn); }
+.dot.none { background: var(--line); }
+.tools { display: flex; gap: 8px; }
+.tool { font: inherit; font-size: 12px; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.tool[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-3); }
+.tool:focus-visible { outline: 2px solid var(--c-codex); outline-offset: 2px; }
+
+/* 主体 */
+.main { display: grid; gap: 14px; grid-template-columns: 1fr; min-height: 0; }
+.gauges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.gauge { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 14px 12px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; min-width: 0; }
+.g-head { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.logo { width: 26px; height: 26px; border-radius: 7px; flex: none; }
+.logo-sub { width: 18px; height: 18px; border-radius: 5px; margin-left: -14px; margin-top: 12px; box-shadow: 0 0 0 2px var(--panel); }
+.g-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-members { font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ring-box { position: relative; display: grid; place-items: center; min-height: 0; }
+.ring { width: 100%; max-width: 168px; aspect-ratio: 1; display: block; }
+.ring .track { stroke: var(--track); }
+.ring .tick { stroke: var(--ink-3); }
+.ring-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.pct { font-family: var(--font-num); font-weight: 500; font-size: clamp(22px, 4.2vw, 34px); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.pct small { font-size: 0.45em; color: var(--ink-3); margin-left: 1px; letter-spacing: 0; }
+.pct.none { color: var(--ink-3); }
+.pct-label { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+.g-foot { display: grid; gap: 3px; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.g-row { display: flex; justify-content: space-between; gap: 8px; }
+.g-row b { font-family: var(--font-num); font-weight: 500; color: var(--ink); }
+.chip { justify-self: start; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.chip svg { width: 10px; height: 10px; }
+.chip.good { color: var(--good); } .chip.warn { color: var(--warn); } .chip.crit { color: var(--crit); } .chip.none { color: var(--ink-3); }
+
+.totals { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.t-head { font-size: 12px; color: var(--ink-3); letter-spacing: 0.04em; }
+.t-hero { display: flex; align-items: center; gap: 16px; }
+.share { width: 92px; height: 92px; flex: none; }
+.share .track { stroke: var(--track); }
+.big { font-family: var(--font-num); font-size: clamp(30px, 5vw, 44px); font-weight: 500; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.big-unit { font-size: 0.42em; color: var(--ink-3); margin-left: 4px; letter-spacing: 0; }
+.big-sub { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+.legend { display: grid; gap: 6px; font-size: 12px; }
+.lg { display: grid; grid-template-columns: 10px 1fr auto auto; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.sw { width: 10px; height: 10px; border-radius: 3px; }
+.lg-name { color: var(--ink-2); }
+.lg-val { font-family: var(--font-num); color: var(--ink); }
+.lg-pct { font-family: var(--font-num); color: var(--ink-3); min-width: 3.2em; text-align: right; }
+.bars { position: relative; }
+.bars svg { width: 100%; height: auto; display: block; overflow: visible; }
+.bars text { font-family: var(--font-num); font-size: 10px; fill: var(--ink-3); }
+.bars .grid { stroke: var(--line); }
+.bars .hit { fill: transparent; }
+.tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 6px)); background: var(--ink); color: var(--bg); font-size: 11px; padding: 5px 8px; border-radius: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.note { font-size: 11px; color: var(--ink-3); }
+.empty { color: var(--ink-3); font-size: 13px; }
+
+@media (min-width: 720px) {
+  .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* 横屏监控：一屏铺满，不滚动 */
+@media (orientation: landscape) and (min-width: 640px) {
+  .app { height: 100%; }
+  .main { grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr); align-items: stretch; }
+  .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .gauge { align-content: stretch; }
+}
+@media (orientation: landscape) and (max-height: 480px) {
+  .app { gap: 8px; padding-block: 8px; }
+  .gauge { padding: 10px 10px 8px; gap: 4px; border-radius: 12px; }
+  .totals { padding: 12px; gap: 8px; border-radius: 12px; }
+  .ring { max-width: 132px; }
+  .g-members, .note { display: none; }
+  .share { width: 72px; height: 72px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .arc { transition: stroke-dashoffset .8s cubic-bezier(.2,.7,.2,1); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><h1>Agent 额度监控</h1><span class="clock" id="clock">--:--</span></div>
+    <div class="status" id="status"><span class="src"><span class="dot none"></span>正在读取数据…</span></div>
+    <div class="tools">
+      <button class="tool" id="wake" type="button" aria-pressed="false">屏幕常亮</button>
+      <button class="tool" id="full" type="button" hidden>全屏</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="gauges" id="gauges" aria-label="额度池"></section>
+    <section class="totals" aria-label="token 消耗">
+      <div class="t-head">今日 token 消耗 · 全部 Agent</div>
+      <div class="t-hero">
+        <svg class="share" id="share" viewBox="0 0 100 100" aria-hidden="true"></svg>
+        <div>
+          <div class="big" id="total-today">—</div>
+          <div class="big-sub" id="total-week">近 7 天 —</div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="bars" id="bars"></div>
+      <div class="note">token 含缓存读取。Grok 与 Antigravity 不提供可读的用量记录，未计入总量。</div>
+    </section>
+  </main>
+</div>
+
+<script>
+const DATA = "https://raw.githubusercontent.com/cangwu-ai/agent-quota/data/data/";
+const REFRESH_MS = 2 * 60 * 1000;
+const STALE_MIN = 30;
+const POOLS = [
+  { key: "chatgpt", name: "ChatGPT Pro", members: "Codex · Dots", logo: "icons/chatgpt.png", sub: "icons/codex.png", color: "var(--c-codex)", tokens: "codex" },
+  { key: "claude", name: "Claude Max", members: "Claude App · Claude Code", logo: "icons/claude.png", color: "var(--c-claude)", tokens: "claude" },
+  { key: "grok", name: "SuperGrok", members: "Grok Bot · Grok Build", logo: "icons/grok.png", color: "var(--c-grok)" },
+  { key: "antigravity", name: "Antigravity", members: "Google AI", logo: "icons/antigravity.png", color: "url(#agy)" },
+];
+const SERIES = [
+  { key: "claude", name: "Claude", color: "var(--c-claude)" },
+  { key: "codex", name: "Codex", color: "var(--c-codex)" },
+];
+const ICON = {
+  good: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2.5v4.2M6 9.2v.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  crit: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3 3 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  none: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+};
+const LEVEL = { good: "充足", warn: "注意", crit: "紧张", none: "未填写" };
+let data = { mac: null, "grok-cloud": null, manual: null };
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const level = (p) => (p == null ? "none" : p >= 80 ? "crit" : p >= 60 ? "warn" : "good");
+function minsAgo(iso) { return iso ? (Date.now() - new Date(iso).getTime()) / 60000 : Infinity; }
+function ago(iso) {
+  const m = Math.round(minsAgo(iso));
+  if (!Number.isFinite(m)) return "无数据";
+  if (m < 1) return "刚刚";
+  if (m < 60) return `${m} 分钟前`;
+  if (m < 2880) return `${Math.round(m / 60)} 小时前`;
+  return `${Math.round(m / 1440)} 天前`;
+}
+function until(iso) {
+  if (!iso) return null;
+  const t = new Date(iso), ms = t - Date.now();
+  if (Number.isNaN(ms)) return null;
+  const date = `${t.getMonth() + 1}/${t.getDate()}`;
+  if (ms <= 0) return `已重置（${date}）`;
+  const h = Math.floor(ms / 3600000);
+  return h >= 24 ? `${Math.floor(h / 24)} 天 ${h % 24} 小时` : `${h} 小时 ${Math.floor((ms % 3600000) / 60000)} 分`;
+}
+function fmt(n) {
+  if (n == null) return "—";
+  if (n >= 1e8) return [(n / 1e8).toFixed(2), "亿"];
+  if (n >= 1e4) return [(n / 1e4).toFixed(n >= 1e6 ? 0 : 1), "万"];
+  return [String(n), ""];
+}
+const fmtText = (n) => { const [v, u] = fmt(n); return n == null ? "—" : v + u; };
+
+function snapshots() { return ["mac", "grok-cloud"].map((k) => data[k]).filter(Boolean); }
+
+function poolReading(p) {
+  if (p.key === "chatgpt") {
+    let best = null;
+    for (const s of snapshots()) {
+      const c = s.codex;
+      if (c && c.windows && c.windows.length && (!best || c.observed_at > best.observed_at)) best = c;
+    }
+    if (!best) return { pct: null };
+    return { pct: best.windows[0].used_percent, reset: best.windows[0].resets_at, auto: true };
+  }
+  const m = data.manual && data.manual[p.key];
+  if (!m || m.used_percent == null) return { pct: null };
+  return { pct: m.used_percent, reset: m.resets_on ? m.resets_on + "T00:00:00+08:00" : null, when: m.updated_at };
+}
+
+function tokensOf(src) {
+  let today = 0, any = false;
+  const byDay = {};
+  for (const s of snapshots()) {
+    const t = s[src];
+    if (!t || t.tokens_today == null) continue;
+    any = true;
+    today += t.tokens_today || 0;
+    for (const d of t.tokens_by_day || []) byDay[d.day] = (byDay[d.day] || 0) + (d.tokens || 0);
+  }
+  return any ? { today, byDay } : null;
+}
+
+function ring(p, pct, lv) {
+  const r = 42, c = 2 * Math.PI * r;
+  const v = pct == null ? 0 : Math.max(0, Math.min(100, pct));
+  const color = lv === "crit" ? "var(--crit)" : lv === "warn" ? "var(--warn)" : p.color;
+  const tickAngle = (0.8 * 360 - 90) * Math.PI / 180;
+  const tx1 = 50 + (r - 8) * Math.cos(tickAngle), ty1 = 50 + (r - 8) * Math.sin(tickAngle);
+  const tx2 = 50 + (r + 8) * Math.cos(tickAngle), ty2 = 50 + (r + 8) * Math.sin(tickAngle);
+  return `<svg class="ring" viewBox="0 0 100 100" role="img" aria-label="${esc(p.name)} 已用 ${pct == null ? "未知" : Math.round(v) + "%"}">
+    <defs><linearGradient id="agy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--c-agy-a)"/><stop offset="1" stop-color="var(--c-agy-b)"/></linearGradient></defs>
+    <circle class="track" cx="50" cy="50" r="${r}" fill="none" stroke-width="7"/>
+    <circle class="arc" cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - v / 100)}" transform="rotate(-90 50 50)" ${v === 0 ? 'stroke-opacity="0"' : ""}/>
+    <line class="tick" x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke-width="1.5" stroke-linecap="round"><title>80% 警戒线</title></line>
+  </svg>`;
+}
+
+function renderGauges() {
+  $("gauges").innerHTML = POOLS.map((p) => {
+    const r = poolReading(p), lv = level(r.pct);
+    const tk = p.tokens ? tokensOf(p.tokens) : null;
+    const reset = until(r.reset);
+    const pctHtml = r.pct == null ? '<div class="pct none">—</div>' : `<div class="pct">${Math.round(r.pct)}<small>%</small></div>`;
+    const rows = [
+      `<div class="g-row"><span>重置</span><b>${reset || "—"}</b></div>`,
+      `<div class="g-row"><span>今日 token</span><b>${p.tokens ? fmtText(tk && tk.today) : "不可统计"}</b></div>`,
+    ];
+    if (!r.auto) rows.push(`<div class="g-row"><span>手动更新</span><b>${r.when ? ago(r.when) : "未填写"}</b></div>`);
+    return `<article class="gauge" aria-label="${esc(p.name)}">
+      <div class="g-head">
+        <img class="logo" src="${p.logo}" alt="">${p.sub ? `<img class="logo logo-sub" src="${p.sub}" alt="">` : ""}
+        <div style="min-width:0"><div class="g-name">${esc(p.name)}</div><div class="g-members">${esc(p.members)}</div></div>
+      </div>
+      <div class="ring-box">${ring(p, r.pct, lv)}<div class="ring-center">${pctHtml}<div class="pct-label">本周期已用</div></div></div>
+      <div class="g-foot"><span class="chip ${lv}">${ICON[lv]}${LEVEL[lv]}</span>${rows.join("")}</div>
+    </article>`;
+  }).join("");
+}
+
+function renderTotals() {
+  const parts = SERIES.map((s) => ({ ...s, t: tokensOf(s.key) }));
+  const today = parts.reduce((a, s) => a + ((s.t && s.t.today) || 0), 0);
+  const days = [...new Set(parts.flatMap((s) => (s.t ? Object.keys(s.t.byDay) : [])))].sort().slice(-7);
+  const week = parts.reduce((a, s) => a + days.reduce((b, d) => b + ((s.t && s.t.byDay[d]) || 0), 0), 0);
+  const [v, u] = fmt(today);
+  $("total-today").innerHTML = parts.some((s) => s.t) ? `${v}<span class="big-unit">${u}</span>` : "—";
+  $("total-week").textContent = `近 7 天 ${fmtText(week)}`;
+
+  // 今日占比环：两段，段间留 2 单位空隙
+  const r = 40, c = 2 * Math.PI * r;
+  let offset = 0, segs = "";
+  for (const s of parts) {
+    const val = (s.t && s.t.today) || 0;
+    if (!today || !val) continue;
+    const len = (val / today) * c;
+    const gap = parts.filter((x) => x.t && x.t.today).length > 1 ? 2 : 0;
+    segs += `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${s.color}" stroke-width="10" stroke-dasharray="${Math.max(0, len - gap)} ${c}" stroke-dashoffset="${-offset}" transform="rotate(-90 50 50)"/>`;
+    offset += len;
+  }
+  $("share").innerHTML = `<circle class="track" cx="50" cy="50" r="${r}" fill="none" stroke-width="10"/>${segs}`;
+
+  $("legend").innerHTML = parts.map((s) => {
+    const val = (s.t && s.t.today) || 0;
+    return `<div class="lg"><span class="sw" style="background:${s.color}"></span><span class="lg-name">${s.name}</span><span class="lg-val">${s.t ? fmtText(val) : "—"}</span><span class="lg-pct">${today ? Math.round((val / today) * 100) + "%" : ""}</span></div>`;
+  }).join("");
+
+  renderBars(parts, days);
+}
+
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+
+function renderBars(parts, days) {
+  const box = $("bars");
+  if (!days.length) { box.innerHTML = '<div class="empty">等待第一份快照…</div>'; return; }
+  const W = 300, H = 120, L = 34, T = 6, B = 18;
+  const totals = days.map((d) => parts.reduce((a, s) => a + ((s.t && s.t.byDay[d]) || 0), 0));
+  const max = niceMax(Math.max(...totals));
+  const y = (v) => T + (H - T - B) * (1 - v / max);
+  const slot = (W - L) / days.length, bw = Math.min(18, slot * 0.55);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="近 7 天每日 token，按 Agent 堆叠">`;
+  for (const t of [0, max]) svg += `<line class="grid" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${fmtText(t)}</text>`;
+  days.forEach((d, i) => {
+    const cx = L + slot * i + slot / 2;
+    let base = y(0);
+    parts.forEach((s, j) => {
+      const val = (s.t && s.t.byDay[d]) || 0;
+      if (!val) return;
+      const h = Math.max(0, y(0) - y(val));
+      const top = base - h;
+      const isTop = parts.slice(j + 1).every((x) => !((x.t && x.t.byDay[d]) || 0));
+      const gap = base === y(0) ? 0 : 1;
+      svg += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${Math.max(0, h - gap)}" rx="${isTop ? 3 : 0}" fill="${s.color}"/>`;
+      base = top;
+    });
+    svg += `<rect class="hit" x="${L + slot * i}" y="${T}" width="${slot}" height="${H - T - B}" data-i="${i}"/>`;
+    svg += `<text x="${cx}" y="${H - 4}" text-anchor="middle">${d.slice(8)}</text>`;
+  });
+  box.innerHTML = svg + '</svg><div class="tip" id="tip" hidden></div>';
+  const tip = $("tip");
+  box.querySelectorAll(".hit").forEach((h) => {
+    h.addEventListener("pointerenter", () => {
+      const i = +h.dataset.i, d = days[i];
+      tip.textContent = `${d.slice(5)}  ` + parts.map((s) => `${s.name} ${fmtText((s.t && s.t.byDay[d]) || 0)}`).join(" · ");
+      const scale = box.querySelector("svg").getBoundingClientRect().width / W;
+      tip.style.left = `${(L + slot * i + slot / 2) * scale}px`;
+      tip.style.top = `${y(totals[i]) * scale}px`;
+      tip.hidden = false;
+    });
+    h.addEventListener("pointerleave", () => { tip.hidden = true; });
+  });
+}
+
+function renderStatus() {
+  const items = [["Mac", data.mac && data.mac.collected_at], ["云电脑", data["grok-cloud"] && data["grok-cloud"].collected_at]];
+  $("status").innerHTML = items.map(([name, at]) => {
+    const m = minsAgo(at);
+    const cls = !Number.isFinite(m) ? "none" : m > STALE_MIN ? "stale" : "ok";
+    return `<span class="src" title="${cls === "stale" ? "超过 30 分钟未更新" : ""}"><span class="dot ${cls}"></span>${name} ${ago(at)}</span>`;
+  }).join("");
+}
+
+function render() { renderGauges(); renderTotals(); renderStatus(); }
+
+async function load() {
+  const bust = `?t=${Math.floor(Date.now() / 60000)}`;
+  const get = (name) => fetch(DATA + name + ".json" + bust, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [mac, cloud, manual] = await Promise.all([get("mac"), get("grok-cloud"), get("manual")]);
+  data = { mac: mac || data.mac, "grok-cloud": cloud || data["grok-cloud"], manual: manual || data.manual };
+  render();
+}
+
+function tick() {
+  const d = new Date();
+  $("clock").textContent = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+// 屏幕常亮（支持 Wake Lock 的浏览器）
+let lock = null;
+async function setWake(on) {
+  try {
+    if (on && "wakeLock" in navigator) {
+      lock = await navigator.wakeLock.request("screen");
+      lock.addEventListener("release", () => { if (document.visibilityState !== "visible") return; $("wake").setAttribute("aria-pressed", "false"); });
+      $("wake").setAttribute("aria-pressed", "true");
+    } else {
+      if (lock) await lock.release();
+      lock = null;
+      $("wake").setAttribute("aria-pressed", "false");
+    }
+  } catch { $("wake").setAttribute("aria-pressed", "false"); $("wake").textContent = "常亮不可用"; }
+}
+$("wake").addEventListener("click", () => setWake($("wake").getAttribute("aria-pressed") !== "true"));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") { load(); if ($("wake").getAttribute("aria-pressed") === "true") setWake(true); }
+});
+if (!("wakeLock" in navigator)) $("wake").hidden = true;
+
+// 全屏按钮：只在支持的浏览器显示（iOS 请“添加到主屏幕”）
+if (document.documentElement.requestFullscreen) {
+  $("full").hidden = false;
+  $("full").addEventListener("click", () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  });
+}
+
+render();
+tick();
+setInterval(tick, 15000);
+load();
+setInterval(load, REFRESH_MS);
+setInterval(renderStatus, 60000);
+</script>
+</body>
+</html>
