@@ -241,6 +241,18 @@ function poolReading(p) {
     if (!best) return { pct: null };
     return { pct: best.windows[0].used_percent, reset: best.windows[0].resets_at, auto: true };
   }
+  if (p.key === "antigravity") {
+    let best = null;
+    for (const s of snapshots()) {
+      const a = s.antigravity;
+      if (a && a.buckets && a.buckets.length && (!best || a.observed_at > best.observed_at)) best = a;
+    }
+    if (best) {
+      const top = (w) => best.buckets.filter((b) => b.window === w).sort((x, y) => y.used_percent - x.used_percent)[0];
+      const wk = top("weekly"), h5 = top("5h");
+      if (wk) return { pct: wk.used_percent, reset: wk.resets_at, auto: true, extra: h5 ? ["5小时", Math.round(h5.used_percent) + "%"] : null };
+    }
+  }
   const m = data.manual && data.manual[p.key];
   if (!m || m.used_percent == null) return { pct: null };
   return { pct: m.used_percent, reset: m.resets_on ? m.resets_on + "T00:00:00+08:00" : null, when: m.updated_at };
@@ -285,7 +297,8 @@ function renderGauges() {
       `<div class="g-row"><span>重置</span><b>${reset || "—"}</b></div>`,
       `<div class="g-row"><span>今日</span><b>${p.tokens ? fmtText(tk && tk.today) : "无记录"}</b></div>`,
     ];
-    if (!r.auto) rows.push(`<div class="g-row"><span>更新</span><b>${r.when ? ago(r.when) : "—"}</b></div>`);
+    if (r.extra) rows.push(`<div class="g-row"><span>${r.extra[0]}</span><b>${r.extra[1]}</b></div>`);
+    else if (!r.auto) rows.push(`<div class="g-row"><span>更新</span><b>${r.when ? ago(r.when) : "—"}</b></div>`);
     return `<article class="gauge" aria-label="${esc(p.name)}">
       <div class="g-head">
         <img class="logo" src="${p.logo}" alt="">${p.sub ? `<img class="logo logo-sub" src="${p.sub}" alt="">` : ""}
