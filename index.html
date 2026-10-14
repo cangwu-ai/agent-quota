@@ -92,7 +92,8 @@ body {
 .pct-label { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
 .g-foot { display: grid; gap: 3px; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .g-row { display: flex; justify-content: space-between; gap: 8px; }
-.g-row b { font-family: var(--font-num); font-weight: 500; color: var(--ink); }
+.g-row span { white-space: nowrap; }
+.g-row b { font-family: var(--font-num); font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip { justify-self: start; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
 .chip svg { width: 10px; height: 10px; }
 .chip.good { color: var(--good); } .chip.warn { color: var(--warn); } .chip.crit { color: var(--crit); } .chip.none { color: var(--ink-3); }
@@ -177,9 +178,9 @@ const DATA = "https://raw.githubusercontent.com/cangwu-ai/agent-quota/data/data/
 const REFRESH_MS = 2 * 60 * 1000;
 const STALE_MIN = 30;
 const POOLS = [
-  { key: "chatgpt", name: "ChatGPT Pro", members: "Codex · Dots", logo: "icons/chatgpt.png", sub: "icons/codex.png", color: "var(--c-codex)", tokens: "codex" },
-  { key: "claude", name: "Claude Max", members: "Claude App · Claude Code", logo: "icons/claude.png", color: "var(--c-claude)", tokens: "claude" },
-  { key: "grok", name: "SuperGrok", members: "Grok Bot · Grok Build", logo: "icons/grok.png", color: "var(--c-grok)" },
+  { key: "chatgpt", name: "ChatGPT", members: "Pro · Codex · Dots", logo: "icons/chatgpt.png", sub: "icons/codex.png", color: "var(--c-codex)", tokens: "codex" },
+  { key: "claude", name: "Claude", members: "Max · App · Code", logo: "icons/claude.png", color: "var(--c-claude)", tokens: "claude" },
+  { key: "grok", name: "Grok", members: "SuperGrok · Bot · Build", logo: "icons/grok.png", color: "var(--c-grok)" },
   { key: "antigravity", name: "Antigravity", members: "Google AI", logo: "icons/antigravity.png", color: "url(#agy)" },
 ];
 const SERIES = [
@@ -214,7 +215,7 @@ function until(iso) {
   const date = `${t.getMonth() + 1}/${t.getDate()}`;
   if (ms <= 0) return `已重置（${date}）`;
   const h = Math.floor(ms / 3600000);
-  return h >= 24 ? `${Math.floor(h / 24)} 天 ${h % 24} 小时` : `${h} 小时 ${Math.floor((ms % 3600000) / 60000)} 分`;
+  return h >= 24 ? `${Math.floor(h / 24)}天${h % 24}时` : `${h}时${Math.floor((ms % 3600000) / 60000)}分`;
 }
 function fmt(n) {
   if (n == null) return "—";
@@ -259,14 +260,14 @@ function ring(p, pct, lv) {
   const v = pct == null ? 0 : Math.max(0, Math.min(100, pct));
   const color = lv === "crit" ? "var(--crit)" : lv === "warn" ? "var(--warn)" : p.color;
   const tickAngle = (0.8 * 360 - 90) * Math.PI / 180;
-  const tx1 = 50 + (r - 8) * Math.cos(tickAngle), ty1 = 50 + (r - 8) * Math.sin(tickAngle);
-  const tx2 = 50 + (r + 8) * Math.cos(tickAngle), ty2 = 50 + (r + 8) * Math.sin(tickAngle);
+  const tx1 = 50 + (r - 5) * Math.cos(tickAngle), ty1 = 50 + (r - 5) * Math.sin(tickAngle);
+  const tx2 = 50 + (r + 5) * Math.cos(tickAngle), ty2 = 50 + (r + 5) * Math.sin(tickAngle);
   return `<svg class="ring" viewBox="0 0 100 100" role="img" aria-label="${esc(p.name)} 已用 ${pct == null ? "未知" : Math.round(v) + "%"}">
     <defs><linearGradient id="agy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--c-agy-a)"/><stop offset="1" stop-color="var(--c-agy-b)"/></linearGradient></defs>
     <circle class="track" cx="50" cy="50" r="${r}" fill="none" stroke-width="7"/>
     <circle class="arc" cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
       stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - v / 100)}" transform="rotate(-90 50 50)" ${v === 0 ? 'stroke-opacity="0"' : ""}/>
-    <line class="tick" x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke-width="1.5" stroke-linecap="round"><title>80% 警戒线</title></line>
+    <line class="tick" x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.7"><title>80% 警戒线</title></line>
   </svg>`;
 }
 
@@ -278,9 +279,9 @@ function renderGauges() {
     const pctHtml = r.pct == null ? '<div class="pct none">—</div>' : `<div class="pct">${Math.round(r.pct)}<small>%</small></div>`;
     const rows = [
       `<div class="g-row"><span>重置</span><b>${reset || "—"}</b></div>`,
-      `<div class="g-row"><span>今日 token</span><b>${p.tokens ? fmtText(tk && tk.today) : "不可统计"}</b></div>`,
+      `<div class="g-row"><span>今日</span><b>${p.tokens ? fmtText(tk && tk.today) : "无记录"}</b></div>`,
     ];
-    if (!r.auto) rows.push(`<div class="g-row"><span>手动更新</span><b>${r.when ? ago(r.when) : "未填写"}</b></div>`);
+    if (!r.auto) rows.push(`<div class="g-row"><span>更新</span><b>${r.when ? ago(r.when) : "—"}</b></div>`);
     return `<article class="gauge" aria-label="${esc(p.name)}">
       <div class="g-head">
         <img class="logo" src="${p.logo}" alt="">${p.sub ? `<img class="logo logo-sub" src="${p.sub}" alt="">` : ""}
