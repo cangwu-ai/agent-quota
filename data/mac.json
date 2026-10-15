@@ -1,11 +1,11 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-15T08:00:04.038135+00:00",
+ "collected_at": "2026-10-15T08:10:09.378061+00:00",
  "codex": {
-  "observed_at": "2026-10-15T05:54:57.124Z",
+  "observed_at": "2026-10-14T03:19:40.110Z",
   "windows": [
    {
-    "used_percent": 7.0,
+    "used_percent": 1.0,
     "window_minutes": 10080,
     "resets_at": "2026-10-20T06:06:20+00:00"
    }
