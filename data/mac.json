@@ -1,18 +1,18 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-16T02:49:09.548208+00:00",
+ "collected_at": "2026-10-16T02:59:15.419081+00:00",
  "codex": {
-  "observed_at": "2026-10-15T12:01:44.728Z",
+  "observed_at": "2026-10-16T02:58:51.952Z",
   "windows": [
    {
-    "used_percent": 4.0,
+    "used_percent": 5.0,
     "window_minutes": 10080,
     "resets_at": "2026-10-22T08:18:56+00:00"
    }
   ],
-  "tokens_last_5h": 0,
-  "tokens_today": 0,
-  "output_tokens_today": 0,
+  "tokens_last_5h": 1032660,
+  "tokens_today": 1032660,
+  "output_tokens_today": 4116,
   "tokens_by_day": [
    {
     "day": "2026-10-10",
@@ -46,8 +46,8 @@
    },
    {
     "day": "2026-10-16",
-    "tokens": 0,
-    "output_tokens": 0
+    "tokens": 1032660,
+    "output_tokens": 4116
    }
   ]
  },
