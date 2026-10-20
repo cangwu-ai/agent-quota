@@ -20,7 +20,9 @@ function legacyPools(file, source) {
     readings.forEach((reading, i) => rows.push({
       id: `${provider}:${reading.group ?? ''}:${reading.window ?? reading.window_minutes ?? i}`,
       provider, name: provider, used_pct: reading.used_percent,
+      window: reading.window ?? null, window_minutes: reading.window_minutes ?? null,
       tokens: value.tokens_today ?? value.tokens,
+      tokens_by_day: Array.isArray(value.tokens_by_day) ? value.tokens_by_day : undefined,
       tokens_period: 'today', tokens_scope: 'provider-source',
       updated_at: value.observed_at ?? value.updated_at,
       resets_at: reading.resets_at ?? (value.resets_on ? `${value.resets_on}T00:00:00+08:00` : null),
@@ -101,7 +103,11 @@ export function createQuotaLoader({ fetch: fetcher = globalThis.fetch, now = Dat
     const updatedAt = oldest(times);
     const levels = [stale(updatedAt, time), ...pools.map(p => p.staleLevel)];
     const staleLevel = levels.includes('critical') ? 'critical' : levels.includes('warning') ? 'warning' : 'fresh';
-    return { pools, totalTokens, updatedAt, staleLevel, errors };
+    const sources = SOURCES.map(([source], i) => ({
+      source, loaded: cache.has(source), updatedAt: times[i], staleLevel: stale(times[i], time),
+      failed: errors.some(e => e.source === source),
+    }));
+    return { pools, totalTokens, updatedAt, staleLevel, errors, sources };
   }
   return function loadQuota() {
     if (!pending) pending = load().finally(() => { pending = null; });
