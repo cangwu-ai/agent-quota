@@ -84,6 +84,60 @@ test('header freshness uses newest automatic source; offline keeps stale data vi
   assert.equal(headerStatus(null, now).hasData, false);
 });
 
+test('one fresh collector cannot mask another stale source (review 05 #1)', async () => {
+  const files = structuredClone(fixtures);
+  files['grok-cloud'].updated_at = '2026-10-20T10:00:00Z';
+  const result = await loaderFor(files)();
+  const head = headerStatus(result, now);
+  assert.equal(head.updatedAt, '2026-10-20T12:00:00.000Z'); // heartbeat still shows the newest pull
+  assert.equal(head.staleLevel, 'critical');
+  assert.deepEqual(head.staleItems.map(i => [i.kind, i.label, i.level]), [['source', '云电脑', 'critical']]);
+});
+
+test('old observations inside a fresh file are flagged, including token-only pools', async () => {
+  // Shape of the real card-01 snapshot: heartbeat 1 min old, codex observed 68 min ago, claude a day ago.
+  const time = Date.parse('2026-10-20T11:10:00Z');
+  const mac = {
+    collected_at: '2026-10-20T11:08:49Z',
+    codex: { observed_at: '2026-10-20T10:02:26Z', windows: [{ used_percent: 0, window_minutes: 10080 }], tokens_today: 6891362 },
+    claude: { observed_at: '2026-10-19T09:00:00Z', tokens_today: 8310722 },
+  };
+  const result = await loaderFor({ mac, 'grok-cloud': null, manual: null }, time)();
+  assert.equal(result.staleLevel, 'critical');
+  const cards = buildCards(result.pools, time);
+  const claude = cards.find(c => c.provider === 'claude');
+  assert.equal(claude.usedPct, null);
+  assert.equal(claude.stale, 'critical');
+  const head = headerStatus(result, time, cards);
+  assert.equal(head.staleLevel, 'critical');
+  assert.deepEqual(head.staleItems.map(i => i.label), ['ChatGPT', 'Claude']);
+
+  // Token observation 45 min old in an otherwise fresh card raises a warning.
+  const files = structuredClone(fixtures);
+  files.mac.pools[2].updated_at = '2026-10-20T11:15:00Z';
+  const warn = await loaderFor(files)();
+  const warnCards = buildCards(warn.pools, now);
+  assert.equal(warnCards.find(c => c.provider === 'claude').stale, 'warning');
+  assert.equal(headerStatus(warn, now, warnCards).staleLevel, 'warning');
+});
+
+test('manual readings get their own stale level (review 05 #2)', async () => {
+  const at = m => new Date(now - m * 60000).toISOString();
+  for (const [age, expected] of [[10, 'fresh'], [31, 'warning'], [45, 'warning'], [61, 'critical'], [24 * 60, 'critical'], [null, 'critical']]) {
+    const files = structuredClone(fixtures);
+    files.manual.pools.push({ id: 'claude', provider: 'claude', used_pct: 50, updated_at: age == null ? null : at(age) });
+    const result = await loaderFor(files)();
+    const card = buildCards(result.pools, now).find(c => c.provider === 'claude');
+    assert.equal(card.manual, true);
+    assert.equal(card.level, 'good');
+    assert.equal(card.stale, expected, `manual age ${age}`);
+    assert.equal(card.staleAt, age == null ? null : at(age));
+    const head = headerStatus(result, now);
+    assert.equal(head.staleLevel, expected);
+    assert.equal(head.staleItems.some(i => i.label === 'Claude' && i.manual), expected !== 'fresh');
+  }
+});
+
 test('number formatting: thousands separators, K/M/B with unit rounding', () => {
   assert.equal(formatExact(26334378), '26,334,378');
   assert.equal(formatExact(null), '—');

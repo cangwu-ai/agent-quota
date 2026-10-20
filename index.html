@@ -265,7 +265,7 @@ const ICON = {
 };
 const STALE_ICON = { fresh: ICON.good, warning: ICON.warn, critical: ICON.crit };
 const LEVEL = { good: '充足', warn: '注意', crit: '紧张', none: '暂无读数' };
-const STALE_TEXT = { fresh: '数据新鲜', warning: '超过 30 分钟未更新', critical: '超过 1 小时未更新' };
+const STALE_TEXT = { fresh: '数据新鲜', warning: '有数据超过 30 分钟未更新', critical: '有数据超过 1 小时未更新' };
 const SERIES_COLOR = Object.fromEntries(PROVIDERS.map(p => [p.provider, `var(--s-${p.provider})`]));
 const R = 50, C = 2 * Math.PI * R;
 
@@ -354,8 +354,10 @@ function updateCard(el, card, now, loading) {
   setHtml(f('tok'), card.tokens != null ? num(card.tokens) : `<span class="none">${loading ? '读取中…' : '无用量记录'}</span>`);
 
   let chips = loading ? '' : `<span class="chip ${card.level}">${ICON[card.level]}${LEVEL[card.level]}</span>`;
-  if (has && !card.manual && card.readingStale && card.readingStale !== 'fresh') {
-    chips += `<span class="chip ${card.readingStale}">${STALE_ICON[card.readingStale]}读数 ${esc(relativeTime(card.readingAt, now))}</span>`;
+  // 手动、仅 token 的池同样标记：卡上任一展示中的数字过期都要提示
+  if (!loading && card.stale && card.stale !== 'fresh') {
+    const age = card.staleAt ? `${card.manual ? '手动' : '数据'} ${relativeTime(card.staleAt, now)}` : '更新时间未知';
+    chips += `<span class="chip ${card.stale}">${STALE_ICON[card.stale]}${esc(age)}</span>`;
   }
   setHtml(f('chips'), chips || '&nbsp;');
 
@@ -470,8 +472,8 @@ function renderBars(cards, days) {
 }
 
 /* ---------- 顶栏状态与提示条 ---------- */
-function renderStatus(result, now) {
-  const head = headerStatus(result, now);
+function renderStatus(result, now, cards) {
+  const head = headerStatus(result, now, cards);
   const fresh = $('fresh');
   if (!result) {
     fresh.className = 'fresh loading';
@@ -495,8 +497,9 @@ function renderStatus(result, now) {
   if (!result && lastError) { msgs.push('数据读取失败，稍后自动重试。'); lv = 'critical'; }
   if (result && !head.hasData) { msgs.push('暂时拉不到任何额度数据，稍后自动重试。'); lv = 'critical'; }
   else if (failed.length && !offline) msgs.push(`部分数据拉取失败（${failed.map(e => esc(e.source)).join('、')}），已保留上次数据。`);
-  if (result && head.updatedAt && head.staleLevel !== 'fresh') {
-    msgs.push(`<b>数据已过期</b>：自动采集最近一次在 ${esc(relativeTime(head.updatedAt, now))}（${esc(absoluteTime(head.updatedAt))}），数字可能不是最新。`);
+  if (result && head.staleItems.length) {
+    const items = head.staleItems.map(i => `${esc(i.label)}${i.kind === 'card' && i.manual ? '（手动）' : ''} ${i.at ? `${esc(relativeTime(i.at, now))}（${esc(absoluteTime(i.at))}）` : '时间未知'}`);
+    msgs.push(`<b>数据已过期</b>：${items.join('；')}，相关数字可能不是最新。`);
     if (head.staleLevel === 'critical') lv = 'critical';
   }
   const banner = $('banner');
@@ -513,7 +516,7 @@ function render() {
     const cards = buildCards(last?.pools ?? [], now);
     renderGauges(cards, now, !last);
     if (totalsFor !== last) { renderTotals(last, cards); totalsFor = last; }
-    renderStatus(last, now);
+    renderStatus(last, now, cards);
   } catch (error) {
     console.error('渲染失败', error);
   }

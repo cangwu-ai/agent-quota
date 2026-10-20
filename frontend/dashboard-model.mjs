@@ -68,6 +68,15 @@ export function untilTime(iso, now = Date.now()) {
   return h >= 24 ? `${Math.floor(h / 24)} 天 ${h % 24} 时` : `${h} 时 ${Math.floor((ms % 3600000) / MINUTE)} 分`;
 }
 
+const RANK = { fresh: 0, warning: 1, critical: 2 };
+/** Worst of several stale levels (nulls ignored); 'fresh' when there is nothing to judge. */
+export const worstStale = levels => levels.filter(Boolean).reduce((a, b) => (RANK[b] > RANK[a] ? b : a), 'fresh');
+/** Oldest timestamp; any unknown time (null/invalid) wins so it is flagged rather than hidden. */
+function oldestTime(times) {
+  if (!times.length || times.some(t => !Number.isFinite(Date.parse(t)))) return null;
+  return times.reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b));
+}
+
 /** Same de-duplication key as quota-data.mjs totalTokens, so card sums equal the total. */
 const tokenKey = pool => pool.tokens_scope === 'provider-source' ? `${pool.source}:${pool.provider}` : pool.id;
 
@@ -100,12 +109,14 @@ export function buildCards(pools, now = Date.now()) {
     const seen = new Set();
     let tokens = null;
     const byDay = new Map();
+    const tokenTimes = [];
     for (const pool of rows) {
       if (pool.tokens == null) continue;
       const key = tokenKey(pool);
       if (seen.has(key)) continue;
       seen.add(key);
       tokens = (tokens ?? 0) + pool.tokens;
+      tokenTimes.push(pool.updated_at ?? null);
       for (const d of pool.tokens_by_day ?? []) {
         if (typeof d?.day === 'string' && Number.isFinite(d.tokens)) byDay.set(d.day, (byDay.get(d.day) ?? 0) + d.tokens);
       }
@@ -114,6 +125,9 @@ export function buildCards(pools, now = Date.now()) {
     const readings = rows.filter(p => p.used_pct != null);
     const main = pickReading(readings.filter(p => !isShortWindow(p))) ?? pickReading(readings);
     const short = main && !isShortWindow(main) ? pickReading(readings.filter(isShortWindow)) : null;
+    // Every observation shown on the card (ring, 5h figure, tokens) counts; the oldest one sets its age.
+    const shown = [...(main ? [main.updated_at ?? null] : []), ...(short ? [short.updated_at ?? null] : []), ...tokenTimes];
+    const staleAt = oldestTime(shown);
 
     return {
       ...meta,
@@ -125,9 +139,10 @@ export function buildCards(pools, now = Date.now()) {
       windowLabel: main ? windowLabel(main) : '本周期',
       resetsAt: main?.resets_at ?? null,
       readingAt: main?.updated_at ?? null,
-      readingStale: main ? staleOf(main.updated_at, now) : null,
       manual: !!main && isManual(main),
       shortPct: short?.used_pct ?? null,
+      staleAt,
+      stale: shown.length ? staleOf(staleAt, now) : null,
     };
   });
 }
@@ -141,14 +156,16 @@ export function buildDays(cards, count = 7) {
 /** Sum of per-card tokens (null-safe). Equal to loadQuota().totalTokens by construction. */
 export const sumCardTokens = cards => cards.reduce((a, c) => a + (c.tokens ?? 0), 0);
 
-/** Automatic collectors; manual.json is hand-entered and judged on its own card instead. */
+/** Automatic collectors, shown as heartbeats in the header. manual.json has no heartbeat of its own. */
 export const AUTO_SOURCES = [{ source: 'mac', label: 'Mac' }, { source: 'grok-cloud', label: '云电脑' }];
 
 /**
- * Header freshness = newest automatic snapshot that has loaded. Manual entries are hand-typed and
- * naturally hours old, so their age is flagged on their own card instead of turning the page red.
+ * Header status. `updatedAt` is the newest automatic heartbeat (last collection), shown as "上次更新".
+ * `staleLevel` is the worst of every loaded automatic source and every observation still displayed on
+ * a card (manual readings and token-only pools included), so a healthy collector never masks one that
+ * stopped. `staleItems` lists what is out of date, for the banner.
  */
-export function headerStatus(result, now = Date.now()) {
+export function headerStatus(result, now = Date.now(), cards = buildCards(result?.pools ?? [], now)) {
   const sources = AUTO_SOURCES.map(({ source, label }) => {
     const s = result?.sources?.find(x => x.source === source);
     const updatedAt = s?.loaded ? s.updatedAt : null;
@@ -156,5 +173,11 @@ export function headerStatus(result, now = Date.now()) {
   });
   const times = sources.map(s => s.updatedAt).filter(Boolean);
   const updatedAt = times.length ? times.reduce((a, b) => (Date.parse(a) >= Date.parse(b) ? a : b)) : null;
-  return { updatedAt, staleLevel: staleOf(updatedAt, now), sources, hasData: (result?.pools?.length ?? 0) > 0 };
+  const staleItems = [
+    ...sources.filter(s => s.loaded && s.staleLevel !== 'fresh').map(s => ({ kind: 'source', label: s.label, at: s.updatedAt, level: s.staleLevel })),
+    ...cards.filter(c => c.stale && c.stale !== 'fresh').map(c => ({ kind: 'card', label: c.name, at: c.staleAt, level: c.stale, manual: c.manual })),
+  ];
+  // No automatic heartbeat at all is critical too: nothing proves any number is current.
+  const staleLevel = updatedAt ? worstStale(staleItems.map(i => i.level)) : 'critical';
+  return { updatedAt, staleLevel, staleItems, sources, hasData: (result?.pools?.length ?? 0) > 0 };
 }
