@@ -6,3 +6,34 @@
 - `data` 分支：额度快照，由作者的 Mac 每 10 分钟、云电脑每次执行任务后推送；手动额度用 `quota-set` 更新。
 
 面板中的 ChatGPT、Codex、Claude、Grok、Antigravity 图标为各自所有者的商标，仅用于标识对应服务。
+
+## 前端数据模块
+
+`frontend/quota-data.mjs` 是无依赖浏览器 ES module，导入不会启动网络请求或计时器：
+
+```html
+<script type="module">
+  import { loadQuota, startQuotaRefresh } from './frontend/quota-data.mjs';
+  const initial = await loadQuota();
+  console.log(initial);
+  const stop = startQuotaRefresh(({ pools, totalTokens, updatedAt, staleLevel, errors }) => {
+    // 使用这些字段渲染仪表盘；errors[].message 可直接展示失败提示。
+    console.log({ pools, totalTokens, updatedAt, staleLevel, errors });
+  });
+  // 组件卸载时调用 stop()，移除计时器和 visibilitychange 监听。
+</script>
+```
+
+- `loadQuota()` 并行读取 data 分支 raw 地址的 `data/mac.json`、`data/grok-cloud.json`、`manual.json`。manual 根路径返回 404 时兼容 `data/manual.json`。每次请求有独立防缓存参数及 `cache: no-store`，15 秒超时。
+- 返回 `{ pools, totalTokens, updatedAt, staleLevel, errors }`；`createQuotaLoader({ fetch, now, baseUrl, timeoutMs })` 可创建独立缓存实例。缓存仅保存在当前模块实例内，不跨页面重载。
+- 池保留协议中的字段，`id` 加来源前缀，附带 `source` 和 `staleLevel`。兼容旧版 windows/buckets、tokens_today 与手动 used_percent；未知比例、token 和时间保持 null。
+- `totalTokens` 是所有来源已知的**当日记录 token**之和，非余额或计费总量。新协议仅计 `tokens_period: today`，`provider-source` 同来源同 provider 的多窗口只计一次；跨来源按独立采集日志相加，若上游日志重复仍会重复计数。未知 token 不计入合计，0 表示已知合计为零，不代表所有池都有记录。
+- `updatedAt` 为最老的来源快照时间，任一来源无时间时为 null；过期状态同时检查文件心跳和池实际观测时间，避免新发布掩盖旧读数。`fresh` 为不超过 30 分钟，`warning` 为超过 30 分钟（黄），`critical` 为超过 60 分钟或时间未知（红）。每池也有独立过期状态。
+- 拉取或解析失败保留该来源上次成功数据，其时间不变；`errors` 返回来源和提示，恢复成功后清除。其余来源仍更新。并发调用合并请求。
+- `startQuotaRefresh(onUpdate)` 立即加载、每 5 分钟刷新、页面回前台立刻刷新；返回清理函数，可选 `onError` 处理消费者回调异常。新仪表盘任务接入此接口；当前旧页面保留原有渲染入口。
+
+运行本地假数据测试（Node 20+，无安装依赖）：
+
+```sh
+node --test tests/quota-data.test.mjs
+```
