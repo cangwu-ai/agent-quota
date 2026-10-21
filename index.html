@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="额度监控">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/app-180.png">
 <link rel="icon" href="icons/app-180.png">
 <link rel="modulepreload" href="frontend/quota-data.mjs">
@@ -43,7 +43,7 @@
   --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow-x: hidden; }
 body {
   margin: 0; background: var(--page); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -130,8 +130,8 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 .logo { width: 32px; height: 32px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; flex: none; font-weight: 600; color: var(--ink-2); }
 .logo img { width: 18px; height: 18px; object-fit: contain; display: block; }
 .logo.wide img { width: 24px; height: 18px; }
-.g-title { min-width: 0; }
-.g-name { margin: 0; font-weight: 600; font-size: 15px; white-space: nowrap; }
+.g-title { min-width: 0; overflow: hidden; }
+.g-name { margin: 0; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .g-members { font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .g-src { margin-left: auto; font-size: 11px; color: var(--ink-3); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; white-space: nowrap; }
 .ring-box { position: relative; display: grid; place-items: center; min-height: 0; }
@@ -193,39 +193,54 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 
 /* ===== 手机横屏全屏：左列合计 + 一排四环，不滚动 ===== */
 @media (orientation: landscape) and (max-height: 500px) {
-  body { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+  body {
+    padding-top: max(6px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    --page: #000000;
+    --surface: #080808;
+    --surface-2: #101010;
+    --grid: #181818;
+    --base: #222222;
+    --border: rgba(255, 255, 255, 0.08);
+    background: #000000;
+  }
   /* 横屏全屏不滚动：提示条回到文档流，挤占环形区而不是遮住卡片底部 */
   .app { height: 100%; display: flex; flex-direction: column; gap: 8px; padding-block: 8px; }
-  .main { flex: 1; }
-  .top { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 12px; }
+  .main { flex: 1; grid-template-columns: clamp(150px, 22vw, 196px) minmax(0, 1fr); gap: 8px; min-height: 0; }
+  .top { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 10px; }
   .brand { margin-right: auto; }
   .fresh .lvl-sep, .fresh .lvl { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; }
   .brand h1 { font-size: 14px; }
   .clock { font-size: 14px; }
-  .srcs, .seg, #wake, .fresh .abs { display: none; }
+  .srcs, .seg, .fresh .abs { display: none; }
   .banner { position: static; box-shadow: none; padding: 4px 10px; font-size: 12px; border-radius: 8px; }
-  .main { grid-template-columns: 196px minmax(0, 1fr); gap: 8px; min-height: 0; }
-  .totals { padding: 12px; gap: 10px; border-radius: 12px; align-content: space-between; }
-  .hero { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .totals { padding: 10px; gap: 8px; border-radius: 12px; align-content: space-between; }
+  .hero { flex-direction: column; align-items: flex-start; gap: 6px; }
   .share { display: none; }
-  .big { font-size: 48px; }
+  .big { font-size: clamp(34px, 5.5vw, 48px); }
   .big .u { font-size: 16px; }
-  .big-sub { margin-top: 6px; }
-  .legend { font-size: 12px; gap: 5px; }
+  .big-sub { margin-top: 4px; }
+  .legend { font-size: 11px; gap: 4px; }
   .bars-block, .note { display: none; }
   .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-height: 0; }
-  .gauge { padding: 10px; gap: 6px; border-radius: 12px; }
+  .gauge { padding: 8px 6px; gap: 4px; border-radius: 12px; min-width: 0; }
+  .g-head { gap: 6px; }
   .g-members, .g-src { display: none; }
-  .logo { width: 24px; height: 24px; border-radius: 7px; }
+  .logo { width: 22px; height: 22px; border-radius: 6px; }
   .logo img { width: 14px; height: 14px; } .logo.wide img { width: 18px; height: 14px; }
-  .g-name { font-size: 13px; }
-  .ring { max-width: 150px; }
-  .pct { font-size: 38px; }
-  .pct-label { margin-top: 3px; }
+  .g-name { font-size: 12px; }
+  .ring { max-width: min(130px, 28vh); }
+  .pct { font-size: clamp(26px, 5.5vh, 36px); }
+  .pct-label { margin-top: 2px; font-size: 10px; }
   .g-foot { gap: 2px; font-size: 11px; }
-  .g-tok { padding-top: 5px; }
-  .g-tok [data-f="tok"] { font-size: 18px; }
+  .g-tok { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; padding-top: 4px; white-space: nowrap; }
+  .g-tok span:first-child { font-size: 11px; white-space: nowrap; }
+  .g-tok [data-f="tok"] { font-size: 15px; white-space: nowrap; }
+  .g-tok .none { font-size: 11px; white-space: nowrap; }
   .g-row.reset, .g-row.extra { display: none; }
+  .chip { padding: 0 6px; font-size: 10px; }
 }
 /* 平滑过渡；减少动态效果时直接跳到终值 */
 @media (prefers-reduced-motion: no-preference) {
@@ -235,18 +250,17 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 @media (forced-colors: active) { .arc { stroke: CanvasText; } }
 
 /* ===== 卡06：OLED 横屏纯黑 + 可选夜间低亮度 ===== */
-@media (orientation: landscape) and (max-height: 500px) {
-  body.monitor-oled {
-    --bg: #000000;
-    --panel: #0a0a0a;
-    --panel-2: #111111;
-    --line: #1a1a1a;
-    --track: #1a1a1a;
-    background: #000;
-  }
+body.monitor-oled {
+  --page: #000000;
+  --surface: #080808;
+  --surface-2: #101010;
+  --grid: #181818;
+  --base: #222222;
+  --border: rgba(255, 255, 255, 0.08);
+  background: #000000;
 }
-body.night-dim { filter: brightness(0.72); }
-body.night-dim .tools { filter: brightness(1.35); }
+body.night-dim { filter: brightness(0.65) contrast(0.96); }
+body.night-dim .tools { filter: brightness(1.4); }
 </style>
 </head>
 <body>
@@ -260,7 +274,7 @@ body.night-dim .tools { filter: brightness(1.35); }
         <button type="button" data-mode="used" aria-pressed="true">已用</button>
         <button type="button" data-mode="left" aria-pressed="false">剩余</button>
       </div>
-      <button class="tool" id="wake" type="button" aria-pressed="false" hidden>屏幕常亮</button>
+      <button class="tool" id="wake" type="button" aria-pressed="false" hidden>常亮</button>
       <button class="tool" id="night" type="button" aria-pressed="false" data-night title="降低亮度，更适合夜间 OLED">夜间</button>
       <button class="tool" id="full" type="button" hidden>全屏</button>
     </div>
@@ -618,23 +632,60 @@ async function setWake(on) {
   try {
     if (on) {
       lock = await navigator.wakeLock.request('screen');
-      lock.addEventListener('release', () => { if (document.visibilityState === 'visible') btn.setAttribute('aria-pressed', 'false'); });
+      lock.addEventListener('release', () => {
+        if (document.visibilityState === 'visible') {
+          btn.setAttribute('aria-pressed', 'false');
+          lock = null;
+        }
+      });
       btn.setAttribute('aria-pressed', 'true');
     } else {
       await lock?.release();
       lock = null;
       btn.setAttribute('aria-pressed', 'false');
     }
-  } catch { btn.setAttribute('aria-pressed', 'false'); btn.textContent = '常亮不可用'; }
+  } catch {
+    btn.setAttribute('aria-pressed', 'false');
+    lock = null;
+  }
 }
 if ('wakeLock' in navigator) {
   $('wake').hidden = false;
   $('wake').addEventListener('click', () => setWake($('wake').getAttribute('aria-pressed') !== 'true'));
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && $('wake').getAttribute('aria-pressed') === 'true') setWake(true); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && $('wake').getAttribute('aria-pressed') === 'true') {
+      setWake(true);
+    }
+  });
 }
-if (document.documentElement.requestFullscreen) {
-  $('full').hidden = false;
-  $('full').addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}));
+
+const docEl = document.documentElement;
+const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+const exitFs = () => (document.exitFullscreen ? document.exitFullscreen() : (document.webkitExitFullscreen ? document.webkitExitFullscreen() : Promise.resolve()));
+const getFs = () => document.fullscreenElement || document.webkitFullscreenElement;
+
+if (reqFs) {
+  const fullBtn = $('full');
+  fullBtn.hidden = false;
+  fullBtn.addEventListener('click', async () => {
+    try {
+      if (getFs()) {
+        await exitFs();
+      } else {
+        await reqFs.call(docEl);
+        if ('wakeLock' in navigator && !lock) {
+          setWake(true);
+        }
+      }
+    } catch {}
+  });
+  const onFsChange = () => {
+    const isFs = Boolean(getFs());
+    fullBtn.setAttribute('aria-pressed', String(isFs));
+    fullBtn.textContent = isFs ? '退出' : '全屏';
+  };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
 }
 
 /* ---------- 时钟、相对时间与自动刷新 ---------- */
