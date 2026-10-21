@@ -63,7 +63,8 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 .fresh svg { width: 11px; height: 11px; flex: none; }
 .fresh .abs { font-weight: 500; opacity: 0.85; }
 .fresh.fresh-ok { color: var(--good); } .fresh.warning { color: var(--warn); } .fresh.critical { color: var(--crit-ink); } .fresh.loading { color: var(--ink-3); }
-.srcs { display: flex; gap: 14px; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.fresh .lvl-sep, .fresh .lvl { white-space: nowrap; }
+.srcs { display: flex; gap: 14px; font-size: 12px; color: var(--ink-3); white-space: nowrap; min-height: 1.45em; } /* 数据到达前先占一行，避免顶栏变高 */
 .src { display: inline-flex; align-items: center; gap: 6px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--base); }
 .dot.d-fresh { background: var(--good); } .dot.d-warning { background: var(--warn); } .dot.d-critical { background: var(--crit); }
@@ -74,8 +75,14 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 .tool { background: var(--surface); border: 1px solid var(--border); }
 .tool[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-3); }
 
-/* 提示条：断网、拉取失败、数据过期 */
-.banner { display: flex; align-items: flex-start; gap: 8px; padding: 9px 14px; border-radius: 12px; font-size: 13px; border: 1px solid currentColor; background: var(--surface); }
+/* 提示条：断网、拉取失败、数据过期。
+   固定在视口底部，出现或变化时不推动页面内容（避免 CLS）；.app 底部按提示条高度留白，滚到底不遮挡。 */
+.banner {
+  display: flex; align-items: flex-start; gap: 8px; padding: 9px 14px; border-radius: 12px; font-size: 13px; border: 1px solid currentColor; background: var(--surface);
+  position: fixed; z-index: 5; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  max-width: 1440px; margin-inline: auto; box-shadow: 0 6px 24px rgba(0,0,0,0.55);
+}
+.app { padding-bottom: calc(20px + var(--banner-space, 0px)); }
 .banner[hidden] { display: none; }
 .banner svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
 .banner.warning { color: var(--warn); } .banner.critical { color: var(--crit-ink); }
@@ -142,17 +149,19 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 .chip.good { color: var(--good); } .chip.warn, .chip.warning { color: var(--warn); } .chip.crit, .chip.critical { color: var(--crit-ink); } .chip.none { color: var(--none); }
 .g-foot { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
 .g-tok { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--grid); }
-.g-tok .num { font-size: 20px; font-weight: 600; color: var(--ink); }
+/* 字号放在容器上：读取中 / 无记录的小字也按大数字的行高占位，数据到达时卡片不变高 */
+.g-tok [data-f="tok"] { font-size: 20px; line-height: 1.45; }
+.g-tok .num { font-weight: 600; color: var(--ink); }
 .g-tok .num .u { font-size: 12px; }
 .g-tok .none { font-size: 13px; font-weight: 500; color: var(--ink-3); }
 .g-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; white-space: nowrap; }
 .g-row b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
 .g-row.chips { justify-content: flex-start; flex-wrap: wrap; }
-.g-row[hidden] { display: none; }
+.g-row[hidden] { visibility: hidden; } /* 保留行高：重置时间等行出现时不推动卡内其他内容 */
 
 /* ===== 桌面宽屏：左列合计 + 右侧 2×2 ===== */
 @media (min-width: 1024px) {
-  .app { min-height: 100%; grid-template-rows: auto auto 1fr; padding-block: 18px; }
+  .app { min-height: 100%; grid-template-rows: auto 1fr; padding-block: 18px calc(18px + var(--banner-space, 0px)); }
   .main { grid-template-columns: 400px minmax(0, 1fr); min-height: 0; }
   .gauges { grid-template-rows: 1fr 1fr; min-height: 0; }
   .gauge { padding: 18px; grid-template-columns: minmax(0, 1fr) minmax(200px, 0.9fr); grid-template-rows: auto 1fr; column-gap: 20px; }
@@ -162,21 +171,37 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
   .pct { font-size: 48px; }
   .g-foot { grid-row: 2; align-content: center; gap: 8px; font-size: 13px; }
   .g-tok { flex-direction: column; align-items: flex-start; gap: 2px; border-top: 0; padding-top: 0; }
-  .g-tok .num { font-size: 28px; }
+  .g-tok [data-f="tok"] { font-size: 28px; }
   .totals { padding: 22px; gap: 20px; }
   .big { font-size: 64px; }
   .share { width: 112px; height: 112px; }
 }
 
+/* ===== 竖屏 / 窄屏：顶栏逐行排列（定稿），每行高度固定，数据到达时不改变换行 ===== */
+@media (max-width: 1023px) {
+  .top { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .brand { margin-right: 0; }
+  .fresh { max-width: 100%; }
+}
+@media (max-width: 599px) {
+  /* 窄屏只留相对 + 绝对时间；等级由颜色与图标表达，文字留给读屏，详情见底部提示条 */
+  .fresh .lvl-sep, .fresh .lvl { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .big-sub { min-height: 2.9em; } /* 精确值一行放不下时折成两行，预留好不推动下方图例 */
+}
+
 /* ===== 手机横屏全屏：左列合计 + 一排四环，不滚动 ===== */
 @media (orientation: landscape) and (max-height: 500px) {
   body { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
-  .app { height: 100%; grid-template-rows: auto auto 1fr; gap: 8px; padding-block: 8px; }
-  .top { flex-wrap: nowrap; gap: 12px; }
+  /* 横屏全屏不滚动：提示条回到文档流，挤占环形区而不是遮住卡片底部 */
+  .app { height: 100%; display: flex; flex-direction: column; gap: 8px; padding-block: 8px; }
+  .main { flex: 1; }
+  .top { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 12px; }
+  .brand { margin-right: auto; }
+  .fresh .lvl-sep, .fresh .lvl { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; }
   .brand h1 { font-size: 14px; }
   .clock { font-size: 14px; }
   .srcs, .seg, #wake, .fresh .abs { display: none; }
-  .banner { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+  .banner { position: static; box-shadow: none; padding: 4px 10px; font-size: 12px; border-radius: 8px; }
   .main { grid-template-columns: 196px minmax(0, 1fr); gap: 8px; min-height: 0; }
   .totals { padding: 12px; gap: 10px; border-radius: 12px; align-content: space-between; }
   .hero { flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -197,7 +222,7 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
   .pct-label { margin-top: 3px; }
   .g-foot { gap: 2px; font-size: 11px; }
   .g-tok { padding-top: 5px; }
-  .g-tok .num { font-size: 18px; }
+  .g-tok [data-f="tok"] { font-size: 18px; }
   .g-row.reset, .g-row.extra { display: none; }
 }
 /* 平滑过渡；减少动态效果时直接跳到终值 */
@@ -236,7 +261,12 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
           <div class="big-sub" id="total-sub">&nbsp;</div>
         </div>
       </div>
-      <ul class="legend" id="legend" aria-label="各 Agent 今日 token"></ul>
+      <ul class="legend" id="legend" aria-label="各 Agent 今日 token"><!-- 与脚本首帧相同的占位行，脚本执行前就占好高度 -->
+        <li class="lg off"><span class="sw"></span><span class="lg-name">ChatGPT</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+        <li class="lg off"><span class="sw"></span><span class="lg-name">Claude</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+        <li class="lg off"><span class="sw"></span><span class="lg-name">Grok</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+        <li class="lg off"><span class="sw"></span><span class="lg-name">Antigravity</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+      </ul>
       <div class="bars-block">
         <h3 class="label" style="margin-bottom:8px">近 7 天 · 按 Agent 堆叠</h3>
         <div class="bars" id="bars"><div class="empty">等待数据…</div></div>
@@ -265,7 +295,7 @@ const ICON = {
 };
 const STALE_ICON = { fresh: ICON.good, warning: ICON.warn, critical: ICON.crit };
 const LEVEL = { good: '充足', warn: '注意', crit: '紧张', none: '暂无读数' };
-const STALE_TEXT = { fresh: '数据新鲜', warning: '有数据超过 30 分钟未更新', critical: '有数据超过 1 小时未更新' };
+const STALE_TEXT = { fresh: '数据新鲜', warning: '超过 30 分钟未更新', critical: '超过 1 小时未更新' };
 const SERIES_COLOR = Object.fromEntries(PROVIDERS.map(p => [p.provider, `var(--s-${p.provider})`]));
 const R = 50, C = 2 * Math.PI * R;
 
@@ -484,7 +514,7 @@ function renderStatus(result, now, cards) {
   } else {
     const lv = head.staleLevel;
     fresh.className = `fresh ${lv === 'fresh' ? 'fresh-ok' : lv}`;
-    fresh.innerHTML = `${STALE_ICON[lv]}上次更新 ${timeTag(head.updatedAt, now)}<span class="abs">（${esc(absoluteTime(head.updatedAt))}）</span> · ${STALE_TEXT[lv]}`;
+    fresh.innerHTML = `${STALE_ICON[lv]}上次更新 ${timeTag(head.updatedAt, now)}<span class="abs">（${esc(absoluteTime(head.updatedAt))}）</span><span class="lvl-sep"> · </span><span class="lvl">${STALE_TEXT[lv]}</span>`;
   }
   $('srcs').innerHTML = head.sources.map(s => `<span class="src"><span class="dot ${s.updatedAt ? `d-${s.staleLevel}` : ''}" aria-hidden="true"></span>${esc(s.label)} ${s.updatedAt ? timeTag(s.updatedAt, now) : s.failed ? '读取失败' : '无数据'}</span>`).join('');
 
@@ -505,8 +535,17 @@ function renderStatus(result, now, cards) {
   const banner = $('banner');
   banner.hidden = !msgs.length;
   banner.className = `banner ${lv}`;
-  banner.innerHTML = msgs.length ? `${lv === 'critical' ? ICON.crit : ICON.warn}<span class="msg">${msgs.join(' ')}</span>` : '';
+  setHtml(banner, msgs.length ? `${lv === 'critical' ? ICON.crit : ICON.warn}<span class="msg">${msgs.join(' ')}</span>` : '');
+  reserveBannerSpace();
 }
+
+/** 底部固定提示条：给 .app 底部留出同高空白，滚到底时不遮住最后一排卡片。 */
+function reserveBannerSpace() {
+  const banner = $('banner');
+  const fixed = !banner.hidden && getComputedStyle(banner).position === 'fixed';
+  document.documentElement.style.setProperty('--banner-space', fixed ? `${banner.offsetHeight + 12}px` : '0px');
+}
+addEventListener('resize', reserveBannerSpace, { passive: true });
 
 let totalsFor; // 合计区只在新数据到达时重建，定时重绘不打断悬停与键盘焦点
 function render() {
