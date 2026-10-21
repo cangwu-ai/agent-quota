@@ -187,6 +187,8 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
   /* 窄屏只留相对 + 绝对时间；等级由颜色与图标表达，文字留给读屏，详情见底部提示条 */
   .fresh .lvl-sep, .fresh .lvl { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); }
   .big-sub { min-height: 2.9em; } /* 精确值一行放不下时折成两行，预留好不推动下方图例 */
+  .gauges { grid-template-columns: 1fr; } /* 竖屏单列 */
+  .main { grid-template-columns: 1fr; }
 }
 
 /* ===== 手机横屏全屏：左列合计 + 一排四环，不滚动 ===== */
@@ -231,6 +233,20 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
   .share circle { transition: stroke-dasharray .6s ease, stroke-dashoffset .6s ease; }
 }
 @media (forced-colors: active) { .arc { stroke: CanvasText; } }
+
+/* ===== 卡06：OLED 横屏纯黑 + 可选夜间低亮度 ===== */
+@media (orientation: landscape) and (max-height: 500px) {
+  body.monitor-oled {
+    --bg: #000000;
+    --panel: #0a0a0a;
+    --panel-2: #111111;
+    --line: #1a1a1a;
+    --track: #1a1a1a;
+    background: #000;
+  }
+}
+body.night-dim { filter: brightness(0.72); }
+body.night-dim .tools { filter: brightness(1.35); }
 </style>
 </head>
 <body>
@@ -245,6 +261,7 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
         <button type="button" data-mode="left" aria-pressed="false">剩余</button>
       </div>
       <button class="tool" id="wake" type="button" aria-pressed="false" hidden>屏幕常亮</button>
+      <button class="tool" id="night" type="button" aria-pressed="false" data-night title="降低亮度，更适合夜间 OLED">夜间</button>
       <button class="tool" id="full" type="button" hidden>全屏</button>
     </div>
   </header>
@@ -634,6 +651,30 @@ startQuotaRefresh(onUpdate, { load, onError });
 addEventListener('online', () => load().then(onUpdate, onError));
 addEventListener('offline', render);
 render();
+
+/* ---------- 卡06：夜间模式 + 横屏 OLED 纯黑 ---------- */
+(function () {
+  const nightBtn = $('night');
+  if (nightBtn) {
+    const saved = localStorage.getItem('quota-night') === '1';
+    document.body.classList.toggle('night-dim', saved);
+    nightBtn.setAttribute('aria-pressed', String(saved));
+    nightBtn.addEventListener('click', () => {
+      const on = nightBtn.getAttribute('aria-pressed') !== 'true';
+      document.body.classList.toggle('night-dim', on);
+      nightBtn.setAttribute('aria-pressed', String(on));
+      localStorage.setItem('quota-night', on ? '1' : '0');
+    });
+  }
+  function syncOled() {
+    const landscapeShort = window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
+    document.body.classList.toggle('monitor-oled', landscapeShort);
+  }
+  syncOled();
+  addEventListener('resize', syncOled);
+  addEventListener('orientationchange', syncOled);
+})();
+
 </script>
 </body>
 </html>
