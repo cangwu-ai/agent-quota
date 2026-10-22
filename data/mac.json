@@ -1,8 +1,8 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-22T07:38:48.015448+00:00",
+ "collected_at": "2026-10-22T07:48:55.033409+00:00",
  "codex": {
-  "observed_at": "2026-10-22T06:35:22.431Z",
+  "observed_at": "2026-10-22T07:39:22.338Z",
   "windows": [
    {
     "used_percent": 11.0,
@@ -10,9 +10,9 @@
     "resets_at": "2026-10-27T09:59:41+00:00"
    }
   ],
-  "tokens_last_5h": 4714274,
-  "tokens_today": 4714274,
-  "output_tokens_today": 25508,
+  "tokens_last_5h": 4767901,
+  "tokens_today": 4767901,
+  "output_tokens_today": 25809,
   "tokens_by_day": [
    {
     "day": "2026-10-16",
@@ -46,17 +46,17 @@
    },
    {
     "day": "2026-10-22",
-    "tokens": 4714274,
-    "output_tokens": 25508
+    "tokens": 4767901,
+    "output_tokens": 25809
    }
   ]
  },
  "claude": {
-  "observed_at": "2026-10-22T07:38:37.492000+00:00",
-  "tokens_last_5h": 23795470,
-  "tokens_today": 23795470,
-  "output_tokens_today": 109594,
-  "output_tokens_7d": 253824,
+  "observed_at": "2026-10-22T07:39:22.593000+00:00",
+  "tokens_last_5h": 25943758,
+  "tokens_today": 25943758,
+  "output_tokens_today": 111999,
+  "output_tokens_7d": 256229,
   "tokens_by_day": [
    {
     "day": "2026-10-16",
@@ -90,8 +90,8 @@
    },
    {
     "day": "2026-10-22",
-    "tokens": 23795470,
-    "output_tokens": 109594
+    "tokens": 25943758,
+    "output_tokens": 111999
    }
   ]
  },
