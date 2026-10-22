@@ -1,6 +1,6 @@
 {
  "machine": "grok-cloud",
- "collected_at": "2026-10-22T15:43:06.407212+00:00",
+ "collected_at": "2026-10-22T15:43:26.272462+00:00",
  "codex": {
   "observed_at": "2026-10-22T14:31:11.655Z",
   "windows": [
@@ -96,7 +96,7 @@
   ]
  },
  "antigravity": {
-  "observed_at": "2026-10-22T15:43:10.974974+00:00",
+  "observed_at": "2026-10-22T15:43:40.963600+00:00",
   "buckets": [
    {
     "group": "Gemini Models",
@@ -108,19 +108,19 @@
     "group": "Gemini Models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-22T20:43:10Z"
+    "resets_at": "2026-10-22T20:43:38Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "weekly",
     "used_percent": 0,
-    "resets_at": "2026-10-29T15:43:10Z"
+    "resets_at": "2026-10-29T15:43:38Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-22T20:43:10Z"
+    "resets_at": "2026-10-22T20:43:38Z"
    }
   ]
  }
