@@ -1,6 +1,6 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-22T10:51:04.131400+00:00",
+ "collected_at": "2026-10-22T11:01:11.161984+00:00",
  "codex": {
   "observed_at": "2026-10-22T09:13:43.757Z",
   "windows": [
@@ -10,7 +10,7 @@
     "resets_at": "2026-10-27T09:59:41+00:00"
    }
   ],
-  "tokens_last_5h": 5753153,
+  "tokens_last_5h": 2818722,
   "tokens_today": 5753153,
   "output_tokens_today": 34324,
   "tokens_by_day": [
