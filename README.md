@@ -7,6 +7,17 @@
 
 面板中的 ChatGPT、Codex、Claude、Grok、Antigravity 图标为各自所有者的商标，仅用于标识对应服务。
 
+## 线上截图
+
+来源：[GitHub Pages 实页](https://cangwu-ai.github.io/agent-quota/)，卡 08 实页截取（桌面 Chromium 视口，非真机）。
+
+| 视口 | 预览 |
+|---|---|
+| 桌面 1440×900 | ![desktop](docs/screenshots/desktop-1440x900.png) |
+| 手机竖屏 390×844 | ![portrait](docs/screenshots/mobile-portrait-390x844.png) |
+| 手机横屏 844×390 | ![landscape](docs/screenshots/mobile-landscape-844x390.png) |
+
+
 ## 前端数据模块
 
 `frontend/quota-data.mjs` 是无依赖浏览器 ES module，导入不会启动网络请求或计时器：
