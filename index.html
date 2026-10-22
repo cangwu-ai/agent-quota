@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="个人 AI Agent 额度与 token 用量监控面板">
-<meta name="theme-color" content="#0d0d0d">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -43,8 +43,9 @@
   --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; overflow-x: hidden; }
+html { height: 100%; }
 body {
+  min-height: 100%;
   margin: 0; background: var(--page); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
@@ -193,6 +194,7 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 
 /* ===== 手机横屏全屏：左列合计 + 一排四环，不滚动 ===== */
 @media (orientation: landscape) and (max-height: 500px) {
+  html, body { height: 100%; }
   body {
     padding-top: max(6px, env(safe-area-inset-top, 0px));
     padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
@@ -250,17 +252,14 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 @media (forced-colors: active) { .arc { stroke: CanvasText; } }
 
 /* ===== 卡06：OLED 横屏纯黑 + 可选夜间低亮度 ===== */
-body.monitor-oled {
-  --page: #000000;
-  --surface: #080808;
-  --surface-2: #101010;
-  --grid: #181818;
-  --base: #222222;
-  --border: rgba(255, 255, 255, 0.08);
-  background: #000000;
+body.night-dim::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+  z-index: 9999;
 }
-body.night-dim { filter: brightness(0.65) contrast(0.96); }
-body.night-dim .tools { filter: brightness(1.4); }
 </style>
 </head>
 <body>
@@ -703,7 +702,7 @@ addEventListener('online', () => load().then(onUpdate, onError));
 addEventListener('offline', render);
 render();
 
-/* ---------- 卡06：夜间模式 + 横屏 OLED 纯黑 ---------- */
+/* ---------- 卡06：夜间模式 ---------- */
 (function () {
   const nightBtn = $('night');
   if (nightBtn) {
@@ -717,13 +716,6 @@ render();
       localStorage.setItem('quota-night', on ? '1' : '0');
     });
   }
-  function syncOled() {
-    const landscapeShort = window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
-    document.body.classList.toggle('monitor-oled', landscapeShort);
-  }
-  syncOled();
-  addEventListener('resize', syncOled);
-  addEventListener('orientationchange', syncOled);
 })();
 
 </script>
