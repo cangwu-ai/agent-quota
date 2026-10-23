@@ -3,151 +3,265 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0e1116">
+<meta name="description" content="个人 AI Agent 额度与 token 用量监控面板">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="额度监控">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/app-180.png">
 <link rel="icon" href="icons/app-180.png">
+<link rel="modulepreload" href="frontend/quota-data.mjs">
+<link rel="modulepreload" href="frontend/dashboard-model.mjs">
 <title>Agent 额度监控</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-/* 布局：横屏 = 左侧四个额度环 + 右侧 token 总量面板，铺满一屏不滚动；竖屏 = 依次堆叠可滚动 */
+/* 暗色环形图监控板（卡 04 定稿）。
+   布局：桌面 = 左列合计 + 右侧 2×2 额度卡；手机竖屏 = 合计 → 2×2 卡，可滚动；手机横屏 = 左列合计 + 一排四环，不滚动。
+   配色：额度环按状态着色（充足/注意/紧张，配图标+文字）；token 系列按固定分类色（蓝 Codex、橙 Claude、青 Grok、黄 Antigravity）。 */
 :root {
-  --bg: #0e1116;
-  --panel: #151a21;
-  --panel-2: #1b212a;
-  --ink: #eef1f5;
-  --ink-2: #aab3bf;
-  --ink-3: #6f7a88;
-  --line: #262d37;
-  --track: #232a34;
-  --good: #3ccf91;
-  --warn: #f4b740;
-  --crit: #ff6b6b;
-  --c-openai: #10a37f;
-  --c-codex: #6d7cff;
-  --c-claude: #e08a68;
-  --c-grok: #d9dde3;
-  --c-agy-a: #4f8bff;
-  --c-agy-b: #ff7a45;
-  --font-sans: "Figtree", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
-  --font-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   color-scheme: dark;
-}
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #eef1f4; --panel: #ffffff; --panel-2: #f5f7f9; --ink: #141920; --ink-2: #4d5866; --ink-3: #808b98;
-    --line: #dde2e8; --track: #e6eaef; --good: #17935f; --warn: #b07400; --crit: #d23c3c;
-    --c-openai: #0d8a6a; --c-codex: #5160f0; --c-claude: #c9643f; --c-grok: #3a3f47;
-    color-scheme: light;
-  }
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #222221;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --ink-3: #898781;
+  --grid: #2c2c2a;
+  --base: #383835;
+  --border: rgba(255,255,255,0.10);
+  --good: #0ca30c;
+  --warn: #fab219;
+  --crit: #d03b3b;
+  --crit-ink: #e86b6b;      /* 小字用的红：#d03b3b 在暗底上对比度不足 4.5:1 */
+  --none: #898781;
+  --s-codex: #3987e5;       /* categorical slot 1 */
+  --s-claude: #d95926;      /* slot 2 */
+  --s-grok: #199e70;        /* slot 3 */
+  --s-antigravity: #c98500; /* slot 4 */
+  --focus: #3987e5;
+  --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html { height: 100%; }
 body {
-  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.45;
-  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+  min-height: 100%;
+  margin: 0; background: var(--page); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
 }
-.app { min-height: 100%; display: grid; grid-template-rows: auto 1fr; gap: 14px; padding-block: 14px; max-width: 1400px; margin: 0 auto; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.app { max-width: 1440px; margin: 0 auto; padding-block: 14px 20px; display: grid; gap: 14px; }
+button { font: inherit; color: inherit; }
+button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* 顶栏 */
-.top { display: flex; align-items: center; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; }
-.brand { display: flex; align-items: baseline; gap: 12px; }
-.brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: 0.01em; }
-.clock { font-family: var(--font-num); font-size: 15px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.status { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); }
+.top { display: flex; align-items: center; gap: 10px 20px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand h1 { margin: 0; font-size: 17px; font-weight: 600; }
+.clock { font-size: 15px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.fresh { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.fresh svg { width: 11px; height: 11px; flex: none; }
+.fresh .abs { font-weight: 500; opacity: 0.85; }
+.fresh.fresh-ok { color: var(--good); } .fresh.warning { color: var(--warn); } .fresh.critical { color: var(--crit-ink); } .fresh.loading { color: var(--ink-3); }
+.fresh .lvl-sep, .fresh .lvl { white-space: nowrap; }
+.srcs { display: flex; gap: 14px; font-size: 12px; color: var(--ink-3); white-space: nowrap; min-height: 1.45em; } /* 数据到达前先占一行，避免顶栏变高 */
 .src { display: inline-flex; align-items: center; gap: 6px; }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
-.dot.ok { background: var(--good); }
-.dot.stale { background: var(--warn); }
-.dot.none { background: var(--line); }
-.tools { display: flex; gap: 8px; }
-.tool { font: inherit; font-size: 12px; color: var(--ink-2); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--base); }
+.dot.d-fresh { background: var(--good); } .dot.d-warning { background: var(--warn); } .dot.d-critical { background: var(--crit); }
+.tools { display: flex; gap: 6px; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
+.seg button, .tool { font-size: 12px; color: var(--ink-2); background: transparent; border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer; min-height: 30px; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); }
+.tool { background: var(--surface); border: 1px solid var(--border); }
 .tool[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-3); }
-.tool:focus-visible { outline: 2px solid var(--c-codex); outline-offset: 2px; }
+
+/* 提示条：断网、拉取失败、数据过期。
+   固定在视口底部，出现或变化时不推动页面内容（避免 CLS）；.app 底部按提示条高度留白，滚到底不遮挡。 */
+.banner {
+  display: flex; align-items: flex-start; gap: 8px; padding: 9px 14px; border-radius: 12px; font-size: 13px; border: 1px solid currentColor; background: var(--surface);
+  position: fixed; z-index: 5; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  max-width: 1440px; margin-inline: auto; box-shadow: 0 6px 24px rgba(0,0,0,0.55);
+}
+.app { padding-bottom: calc(20px + var(--banner-space, 0px)); }
+.banner[hidden] { display: none; }
+.banner svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.banner.warning { color: var(--warn); } .banner.critical { color: var(--crit-ink); }
+.banner .msg { color: var(--ink); }
+.banner .msg b { color: inherit; }
 
 /* 主体 */
-.main { display: grid; gap: 14px; grid-template-columns: 1fr; min-height: 0; }
-.gauges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.gauge { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px 14px 12px; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; min-width: 0; }
-.g-head { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.logo { width: 26px; height: 26px; border-radius: 7px; flex: none; }
-.logo-sub { width: 18px; height: 18px; border-radius: 5px; margin-left: -14px; margin-top: 12px; box-shadow: 0 0 0 2px var(--panel); }
-.g-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.g-members { font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ring-box { position: relative; display: grid; place-items: center; min-height: 0; }
-.ring { width: 100%; max-width: 168px; aspect-ratio: 1; display: block; }
-.ring .track { stroke: var(--track); }
-.ring .tick { stroke: var(--ink-3); }
-.ring-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.pct { font-family: var(--font-num); font-weight: 500; font-size: clamp(22px, 4.2vw, 34px); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.pct small { font-size: 0.45em; color: var(--ink-3); margin-left: 1px; letter-spacing: 0; }
-.pct.none { color: var(--ink-3); }
-.pct-label { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
-.g-foot { display: grid; gap: 3px; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.g-row { display: flex; justify-content: space-between; gap: 8px; }
-.g-row span { white-space: nowrap; }
-.g-row b { font-family: var(--font-num); font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chip { justify-self: start; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
-.chip svg { width: 10px; height: 10px; }
-.chip.good { color: var(--good); } .chip.warn { color: var(--warn); } .chip.crit { color: var(--crit); } .chip.none { color: var(--ink-3); }
+.main { display: grid; gap: 14px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; min-width: 0; }
 
-.totals { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 14px; align-content: start; min-width: 0; }
-.t-head { font-size: 12px; color: var(--ink-3); letter-spacing: 0.04em; }
-.t-hero { display: flex; align-items: center; gap: 16px; }
-.share { width: 92px; height: 92px; flex: none; }
-.share .track { stroke: var(--track); }
-.big { font-family: var(--font-num); font-size: clamp(30px, 5vw, 44px); font-weight: 500; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.big-unit { font-size: 0.42em; color: var(--ink-3); margin-left: 4px; letter-spacing: 0; }
-.big-sub { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
-.legend { display: grid; gap: 6px; font-size: 12px; }
-.lg { display: grid; grid-template-columns: 10px 1fr auto auto; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+/* 精确值：悬停 / 长按 / 点按显示 */
+.num { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: help; border-radius: 4px; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.num .u { font-weight: 500; color: var(--ink-3); margin-left: 2px; letter-spacing: 0; }
+
+/* 合计面板 */
+.totals { padding: 18px; display: grid; gap: 16px; align-content: start; }
+.label { margin: 0; font-size: 12px; font-weight: 400; color: var(--ink-3); }
+.hero { display: flex; align-items: center; gap: 18px; }
+.share { width: 96px; height: 96px; flex: none; }
+.share .track { stroke: var(--grid); }
+.big { font-size: 52px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.big .u { font-size: 20px; margin-left: 4px; }
+.big-sub { font-size: 12px; color: var(--ink-3); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.legend { display: grid; gap: 7px; font-size: 13px; margin: 0; padding: 0; list-style: none; }
+.lg { display: grid; grid-template-columns: 10px 1fr auto 3.2em; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
 .sw { width: 10px; height: 10px; border-radius: 3px; }
 .lg-name { color: var(--ink-2); }
-.lg-val { font-family: var(--font-num); color: var(--ink); }
-.lg-pct { font-family: var(--font-num); color: var(--ink-3); min-width: 3.2em; text-align: right; }
-.bars { position: relative; }
+.lg-val { color: var(--ink); font-weight: 500; }
+.lg-pct { color: var(--ink-3); text-align: right; }
+.lg.off .lg-name, .lg.off .lg-val { color: var(--ink-3); }
+.lg.off .sw { background: transparent; border: 1px dashed var(--ink-3); }
+.bars { position: relative; aspect-ratio: 340 / 130; } /* 预留高度，数据到达时不产生布局偏移 */
 .bars svg { width: 100%; height: auto; display: block; overflow: visible; }
-.bars text { font-family: var(--font-num); font-size: 10px; fill: var(--ink-3); }
-.bars .grid { stroke: var(--line); }
+.bars text { font-size: 10px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.bars .grid { stroke: var(--grid); } .bars .axis { stroke: var(--base); }
 .bars .hit { fill: transparent; }
-.tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 6px)); background: var(--ink); color: var(--bg); font-size: 11px; padding: 5px 8px; border-radius: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.note { font-size: 11px; color: var(--ink-3); }
+.empty { color: var(--ink-3); font-size: 12px; }
+.note { margin: 0; font-size: 11px; color: var(--ink-3); }
 .source-help { font-size: 12px; color: var(--ink-2); }
 .source-help summary { cursor: pointer; }
 .source-help p { margin: 6px 0 0; }
-.empty { color: var(--ink-3); font-size: 13px; }
+.tip { position: fixed; z-index: 10; left: 0; top: 0; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); background: var(--ink); color: var(--page); font-size: 12px; padding: 5px 8px; border-radius: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-@media (min-width: 720px) {
-  .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* 额度卡 */
+.gauges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.gauge { padding: 14px; display: grid; grid-template-rows: auto 1fr auto; gap: 10px; }
+.g-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo { width: 32px; height: 32px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; flex: none; font-weight: 600; color: var(--ink-2); }
+.logo img { width: 18px; height: 18px; object-fit: contain; display: block; }
+.logo.wide img { width: 24px; height: 18px; }
+.g-title { min-width: 0; overflow: hidden; }
+.g-name { margin: 0; font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-members { font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-src { margin-left: auto; font-size: 11px; color: var(--ink-3); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; white-space: nowrap; }
+.ring-box { position: relative; display: grid; place-items: center; min-height: 0; }
+.ring { width: 100%; max-width: 150px; aspect-ratio: 1; display: block; }
+.ring .tick { stroke: var(--ink-3); }
+.ring [data-f="track"] { stroke: var(--base); } /* 不支持 color-mix 时的底轨 */
+.ring-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.pct { font-size: 34px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.pct small { font-size: 0.45em; font-weight: 500; color: var(--ink-3); margin-left: 1px; }
+.pct.none { color: var(--ink-3); }
+.pct-label { font-size: 11px; color: var(--ink-3); margin-top: 5px; }
+.pct-alt { font-size: 11px; color: var(--ink-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.chip svg { width: 10px; height: 10px; }
+.chip.good { color: var(--good); } .chip.warn, .chip.warning { color: var(--warn); } .chip.crit, .chip.critical { color: var(--crit-ink); } .chip.none { color: var(--none); }
+.g-foot { display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); }
+.g-tok { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--grid); }
+/* 字号放在容器上：读取中 / 无记录的小字也按大数字的行高占位，数据到达时卡片不变高 */
+.g-tok [data-f="tok"] { font-size: 20px; line-height: 1.45; }
+.g-tok .num { font-weight: 600; color: var(--ink); }
+.g-tok .num .u { font-size: 12px; }
+.g-tok .none { font-size: 13px; font-weight: 500; color: var(--ink-3); }
+.g-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; white-space: nowrap; }
+.g-row b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.g-row.chips { justify-content: flex-start; flex-wrap: wrap; }
+.g-row[hidden] { visibility: hidden; } /* 保留行高：重置时间等行出现时不推动卡内其他内容 */
+
+/* ===== 桌面宽屏：左列合计 + 右侧 2×2 ===== */
+@media (min-width: 1024px) {
+  .app { min-height: 100%; grid-template-rows: auto 1fr; padding-block: 18px calc(18px + var(--banner-space, 0px)); }
+  .main { grid-template-columns: 400px minmax(0, 1fr); min-height: 0; }
+  .gauges { grid-template-rows: 1fr 1fr; min-height: 0; }
+  .gauge { padding: 18px; grid-template-columns: minmax(0, 1fr) minmax(200px, 0.9fr); grid-template-rows: auto 1fr; column-gap: 20px; }
+  .g-head { grid-column: 1 / -1; }
+  .ring-box { grid-row: 2; }
+  .ring { max-width: 230px; }
+  .pct { font-size: 48px; }
+  .g-foot { grid-row: 2; align-content: center; gap: 8px; font-size: 13px; }
+  .g-tok { flex-direction: column; align-items: flex-start; gap: 2px; border-top: 0; padding-top: 0; }
+  .g-tok [data-f="tok"] { font-size: 28px; }
+  .totals { padding: 22px; gap: 20px; }
+  .big { font-size: 64px; }
+  .share { width: 112px; height: 112px; }
 }
-/* 横屏监控：一屏铺满，不滚动 */
-@media (orientation: landscape) and (min-width: 640px) {
-  .app { height: 100%; }
-  .main { grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr); align-items: stretch; }
-  .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .gauge { align-content: stretch; }
+
+/* ===== 竖屏 / 窄屏：顶栏逐行排列（定稿），每行高度固定，数据到达时不改变换行 ===== */
+@media (max-width: 1023px) {
+  .top { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .brand { margin-right: 0; }
+  .fresh { max-width: 100%; }
 }
-@media (orientation: landscape) and (max-height: 480px) {
-  .app { gap: 8px; padding-block: 8px; }
-  .gauge { padding: 10px 10px 8px; gap: 4px; border-radius: 12px; }
-  .totals { padding: 12px; gap: 8px; border-radius: 12px; }
-  .ring { max-width: 132px; }
-  .g-members, .note { display: none; }
-  .g-name { font-size: 12.5px; }
-  .logo { width: 22px; height: 22px; }
-  .logo-sub { width: 15px; height: 15px; margin-left: -12px; margin-top: 10px; }
+@media (max-width: 599px) {
+  /* 窄屏只留相对 + 绝对时间；等级由颜色与图标表达，文字留给读屏，详情见底部提示条 */
+  .fresh .lvl-sep, .fresh .lvl { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .big-sub { min-height: 2.9em; } /* 精确值一行放不下时折成两行，预留好不推动下方图例 */
+  .gauges { grid-template-columns: 1fr; } /* 竖屏单列 */
+  .main { grid-template-columns: 1fr; }
+}
+
+/* ===== 手机横屏全屏：左列合计 + 一排四环，不滚动 ===== */
+@media (orientation: landscape) and (max-height: 500px) {
+  html, body { height: 100%; }
+  body {
+    padding-top: max(6px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+    --page: #000000;
+    --surface: #080808;
+    --surface-2: #101010;
+    --grid: #181818;
+    --base: #222222;
+    --border: rgba(255, 255, 255, 0.08);
+    background: #000000;
+  }
+  /* 横屏全屏不滚动：提示条回到文档流，挤占环形区而不是遮住卡片底部 */
+  .app { height: 100%; display: flex; flex-direction: column; gap: 8px; padding-block: 8px; }
+  .main { flex: 1; grid-template-columns: clamp(150px, 22vw, 196px) minmax(0, 1fr); gap: 8px; min-height: 0; }
+  .top { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: 10px; }
+  .brand { margin-right: auto; }
+  .fresh .lvl-sep, .fresh .lvl { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; }
+  .brand h1 { font-size: 14px; }
+  .clock { font-size: 14px; }
+  .srcs, .seg, .fresh .abs { display: none; }
+  .banner { position: static; box-shadow: none; padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+  .totals { padding: 10px; gap: 8px; border-radius: 12px; align-content: space-between; }
+  .hero { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .share { display: none; }
+  .big { font-size: clamp(34px, 5.5vw, 48px); }
+  .big .u { font-size: 16px; }
+  .big-sub { margin-top: 4px; }
+  .legend { font-size: 11px; gap: 4px; }
+  .bars-block, .note, .source-help { display: none; }
+  .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-height: 0; }
+  .gauge { padding: 8px 6px; gap: 4px; border-radius: 12px; min-width: 0; }
   .g-head { gap: 6px; }
-  .share { width: 72px; height: 72px; }
+  .g-members, .g-src { display: none; }
+  .logo { width: 22px; height: 22px; border-radius: 6px; }
+  .logo img { width: 14px; height: 14px; } .logo.wide img { width: 18px; height: 14px; }
+  .g-name { font-size: 12px; }
+  .ring { max-width: min(130px, 28vh); }
+  .pct { font-size: clamp(26px, 5.5vh, 36px); }
+  .pct-label { margin-top: 2px; font-size: 10px; }
+  .g-foot { gap: 2px; font-size: 11px; }
+  .g-tok { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; padding-top: 4px; white-space: nowrap; }
+  .g-tok span:first-child { font-size: 11px; white-space: nowrap; }
+  .g-tok [data-f="tok"] { font-size: 15px; white-space: nowrap; }
+  .g-tok .none { font-size: 11px; white-space: nowrap; }
+  .g-row.reset, .g-row.extra { display: none; }
+  .chip { padding: 0 6px; font-size: 10px; }
 }
+/* 平滑过渡；减少动态效果时直接跳到终值 */
 @media (prefers-reduced-motion: no-preference) {
-  .arc { transition: stroke-dashoffset .8s cubic-bezier(.2,.7,.2,1); }
+  .arc { transition: stroke-dashoffset .8s cubic-bezier(.2,.7,.2,1), stroke .4s ease; }
+  .share circle { transition: stroke-dasharray .6s ease, stroke-dashoffset .6s ease; }
+}
+@media (forced-colors: active) { .arc { stroke: CanvasText; } }
+
+/* ===== 卡06：OLED 横屏纯黑 + 可选夜间低亮度 ===== */
+body.night-dim::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+  z-index: 9999;
 }
 </style>
 </head>
@@ -155,358 +269,460 @@ body {
 <div class="app">
   <header class="top">
     <div class="brand"><h1>Agent 额度监控</h1><span class="clock" id="clock">--:--</span></div>
-    <div class="status" id="status"><span class="src"><span class="dot none"></span>正在读取数据…</span></div>
+    <span class="fresh loading" id="fresh" role="status">正在读取数据…</span>
+    <div class="srcs" id="srcs"></div>
     <div class="tools">
-      <button class="tool" id="wake" type="button" aria-pressed="false">屏幕常亮</button>
+      <div class="seg" role="group" aria-label="环形图中心显示">
+        <button type="button" data-mode="used" aria-pressed="true">已用</button>
+        <button type="button" data-mode="left" aria-pressed="false">剩余</button>
+      </div>
+      <button class="tool" id="wake" type="button" aria-pressed="false" hidden>常亮</button>
+      <button class="tool" id="night" type="button" aria-pressed="false" data-night title="降低亮度，更适合夜间 OLED">夜间</button>
       <button class="tool" id="full" type="button" hidden>全屏</button>
     </div>
   </header>
 
+  <div class="banner" id="banner" role="alert" hidden></div>
+
   <main class="main">
-    <section class="gauges" id="gauges" aria-label="额度池"></section>
-    <section class="totals" aria-label="token 消耗">
-      <div class="t-head">今日已记录 token · 北京时间</div>
-      <div class="t-hero">
-        <svg class="share" id="share" viewBox="0 0 100 100" aria-hidden="true"></svg>
+    <section class="panel totals" aria-labelledby="total-label">
+      <h2 class="label" id="total-label">今日已记录 token · 北京时间</h2>
+      <div class="hero">
+        <svg class="share" id="share" viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="40" fill="none" stroke-width="12"/></svg>
         <div>
-          <div class="big" id="total-today">—</div>
-          <div class="big-sub" id="total-week">近 7 天 —</div>
+          <div class="big" id="total">—</div>
+          <div class="big-sub" id="total-sub">&nbsp;</div>
         </div>
       </div>
-      <div class="legend" id="legend"></div>
-      <div class="bars" id="bars"></div>
-      <div class="note">token 含缓存读取，来自本地 Code / Build 日志及手动记录；不代表 App、Bot 全部用量。Antigravity 无 token 记录时不计入。</div>
+      <ul class="legend" id="legend" aria-label="各 Agent 今日 token"><!-- 与脚本首帧相同的占位行，脚本执行前就占好高度 -->
+        <li class="lg off"><span class="sw"></span><span class="lg-name">ChatGPT</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+        <li class="lg off"><span class="sw"></span><span class="lg-name">Claude</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+        <li class="lg off"><span class="sw"></span><span class="lg-name">Grok</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+        <li class="lg off"><span class="sw"></span><span class="lg-name">Antigravity</span><span class="lg-val">…</span><span class="lg-pct"></span></li>
+      </ul>
+      <div class="bars-block">
+        <h3 class="label" style="margin-bottom:8px">近 7 天 · 按 Agent 堆叠</h3>
+        <div class="bars" id="bars"><div class="empty">等待数据…</div></div>
+      </div>
+      <p class="note">token 含缓存读取，来自本地 Code / Build 日志及手动记录；不代表 App、Bot 全部用量。没有用量记录的池不计入合计。数字悬停、长按或点按可看精确值。</p>
       <details class="source-help"><summary>额度缺失时如何恢复</summary><p>Claude / Grok 自动额度需要采集设备上的有效订阅登录。未登录时先在该设备重新登录；读取失败时检查网络后等待下次采集。也可按服务商用量页的真实读数更新手动额度。token 记录独立展示，不能换算成订阅百分比。</p></details>
     </section>
+    <section class="gauges" id="gauges" aria-label="额度池"></section>
   </main>
 </div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
 
-<script>
-const DATA = "https://raw.githubusercontent.com/cangwu-ai/agent-quota/data/data/";
-const REFRESH_MS = 2 * 60 * 1000;
-const STALE_MIN = 30;
-const POOLS = [
-  { key: "chatgpt", name: "ChatGPT", members: "Pro · Codex · Dots", logo: "icons/chatgpt.png", sub: "icons/codex.png", color: "var(--c-codex)", tokens: "codex" },
-  { key: "claude", name: "Claude", members: "Max · App · Code", logo: "icons/claude.png", color: "var(--c-claude)", tokens: "claude" },
-  { key: "grok", name: "Grok", members: "SuperGrok · Bot · Build", logo: "icons/grok.png", color: "var(--c-grok)", tokens: "grok" },
-  { key: "antigravity", name: "Antigravity", members: "Google AI", logo: "icons/antigravity.png", color: "url(#agy)" },
-];
-const SERIES = [
-  { key: "claude", name: "Claude", color: "var(--c-claude)" },
-  { key: "codex", name: "Codex", color: "var(--c-codex)" },
-  { key: "grok", name: "Grok", color: "var(--c-grok)" },
-];
+<script type="module">
+import { beijingDay, createQuotaLoader, loadQuota, startQuotaRefresh } from './frontend/quota-data.mjs';
+import {
+  PROVIDERS, buildCards, buildDays, sumCardTokens, headerStatus, formatCompact, formatCompactText, formatExact,
+  relativeTime, absoluteTime, untilTime,
+} from './frontend/dashboard-model.mjs';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ICON = {
   good: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   warn: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2.5v4.2M6 9.2v.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   crit: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3 3 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   none: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
 };
-const LEVEL = { good: "充足", warn: "注意", crit: "紧张", none: "额度未知" };
-let data = { mac: null, "grok-cloud": null, manual: null };
+const STALE_ICON = { fresh: ICON.good, warning: ICON.warn, critical: ICON.crit };
+const LEVEL = { good: '充足', warn: '注意', crit: '紧张', none: '暂无读数' };
+const STALE_TEXT = { fresh: '数据新鲜', warning: '超过 30 分钟未更新', critical: '超过 1 小时未更新' };
+const SERIES_COLOR = Object.fromEntries(PROVIDERS.map(p => [p.provider, `var(--s-${p.provider})`]));
+const R = 50, C = 2 * Math.PI * R;
 
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const level = (p) => (p == null ? "none" : p >= 80 ? "crit" : p >= 60 ? "warn" : "good");
-function minsAgo(iso) { return iso ? (Date.now() - new Date(iso).getTime()) / 60000 : Infinity; }
-function ago(iso) {
-  const m = Math.round(minsAgo(iso));
-  if (!Number.isFinite(m)) return "无数据";
-  if (m < 1) return "刚刚";
-  if (m < 60) return `${m} 分钟前`;
-  if (m < 2880) return `${Math.round(m / 60)} 小时前`;
-  return `${Math.round(m / 1440)} 天前`;
-}
-function until(iso) {
-  if (!iso) return null;
-  const t = new Date(iso), ms = t - Date.now();
-  if (Number.isNaN(ms)) return null;
-  const date = `${t.getMonth() + 1}/${t.getDate()}`;
-  if (ms <= 0) return `已重置（${date}）`;
-  const h = Math.floor(ms / 3600000);
-  return h >= 24 ? `${Math.floor(h / 24)}天${h % 24}时` : `${h}时${Math.floor((ms % 3600000) / 60000)}分`;
-}
-function fmt(n) {
-  if (n == null) return "—";
-  if (n >= 1e8) return [(n / 1e8).toFixed(2), "亿"];
-  if (n >= 1e4) return [(n / 1e4).toFixed(n >= 1e6 ? 0 : 1), "万"];
-  return [String(n), ""];
-}
-const fmtText = (n) => { const [v, u] = fmt(n); return n == null ? "—" : v + u; };
+// 本地验证可用 ?base=./相对目录/ 读取同源 JSON；只接受相对路径，线上默认读 data 分支。
+const base = new URLSearchParams(location.search).get('base');
+const load = base && /^\.\/[\w./-]*\/$/.test(base) && !base.includes('..') ? createQuotaLoader({ baseUrl: new URL(base, location.href).href }) : loadQuota;
 
-function snapshots() { return ["mac", "grok-cloud"].map((k) => data[k]).filter(Boolean); }
-const isUsage = (n) => typeof n === "number" && Number.isFinite(n) && n >= 0;
-const isPct = (n) => isUsage(n) && n <= 100;
-const beijingDay = (at = Date.now()) => {
-  const ms = new Date(at).getTime();
-  return Number.isFinite(ms) ? new Date(ms + 8 * 3600000).toISOString().slice(0, 10) : null;
-};
-const observedTime = (r) => Number.isFinite(Date.parse(r.when)) ? Date.parse(r.when) : -Infinity;
+let mode = 'used', last = null, lastError = null;
 
-function subscriptionReading(key) {
-  const readings = [];
-  const nodes = snapshots().map((s) => s[key]).filter((s) => s && typeof s === "object");
-  for (const node of nodes) {
-    const windows = Array.isArray(node.windows) ? node.windows.filter((w) => w && isPct(w.used_percent)) : [];
-    const w = windows.find((x) => x.window_minutes === 10080) || windows[0];
-    const pct = w ? w.used_percent : node.used_percent;
-    if (!isPct(pct)) continue;
-    const h5 = windows.find((x) => x.window_minutes === 300);
-    readings.push({ pct, reset: (w && w.resets_at) || node.resets_at,
-      when: node.quota_observed_at || node.observed_at, auto: true,
-      extra: h5 && w !== h5 ? ["5小时", Math.round(h5.used_percent) + "%"] : null });
-  }
-  const manual = data.manual && data.manual[key];
-  if (manual && isPct(manual.used_percent)) readings.push({ pct: manual.used_percent,
-    reset: manual.resets_on ? manual.resets_on + "T00:00:00+08:00" : null,
-    when: manual.updated_at, auto: false });
-  readings.sort((a, b) => observedTime(b) - observedTime(a));
-  const current = readings.find((r) => !r.reset || !Number.isFinite(Date.parse(r.reset)) || Date.parse(r.reset) > Date.now());
-  if (current) return current;
-  if (readings.length) return { pct: null, reason: "周期已结束", when: readings[0].when };
-  const status = nodes.find((n) => n.quota_status && n.quota_status !== "not_configured")?.quota_status || nodes[0]?.quota_status;
-  const reason = { not_configured: "待登录采集", auth_required: "登录已失效", request_failed: "额度读取失败",
-    rate_limited: "接口限流", unsupported: "额度暂不可读" }[status];
-  return { pct: null, reason: reason || (tokensOf(key) ? "仅有 token 记录" : "等待采集") };
+/** Compact number button; exact value via hover / long-press / tap / focus tooltip, and screen-reader text. */
+function num(n, unitLabel = 'token') {
+  const [v, u] = formatCompact(n), exact = formatExact(n);
+  return `<button type="button" class="num" data-exact="${exact} ${unitLabel}"><span aria-hidden="true">${v}${u ? `<span class="u">${u}</span>` : ''}</span><span class="sr">${exact} ${unitLabel}</span></button>`;
 }
+const timeTag = (iso, now) => `<time datetime="${esc(iso)}" title="${esc(absoluteTime(iso))}">${esc(relativeTime(iso, now))}</time>`;
 
-function poolReading(p) {
-  if (p.key === "claude" || p.key === "grok") return subscriptionReading(p.key);
-  if (p.key === "chatgpt") {
-    let best = null;
-    for (const s of snapshots()) {
-      const c = s.codex;
-      if (c && c.windows && c.windows.length && (!best || c.observed_at > best.observed_at)) best = c;
-    }
-    if (!best) return { pct: null };
-    return { pct: best.windows[0].used_percent, reset: best.windows[0].resets_at, when: best.observed_at, auto: true };
-  }
-  if (p.key === "antigravity") {
-    let best = null;
-    for (const s of snapshots()) {
-      const a = s.antigravity;
-      if (a && a.buckets && a.buckets.length && (!best || a.observed_at > best.observed_at)) best = a;
-    }
-    if (best) {
-      const top = (w) => best.buckets.filter((b) => b.window === w).sort((x, y) => y.used_percent - x.used_percent)[0];
-      const wk = top("weekly"), h5 = top("5h");
-      if (wk) return { pct: wk.used_percent, reset: wk.resets_at, when: best.observed_at, auto: true, extra: h5 ? ["5小时", Math.round(h5.used_percent) + "%"] : null };
-    }
-  }
-  const m = data.manual && data.manual[p.key];
-  if (!m || m.used_percent == null) return { pct: null };
-  return { pct: m.used_percent, reset: m.resets_on ? m.resets_on + "T00:00:00+08:00" : null, when: m.updated_at };
-}
-
-function tokensOf(src) {
-  let today = 0, any = false;
-  const byDay = {};
-  const day = beijingDay();
-  const firstDay = beijingDay(Date.now() - 6 * 86400000);
-  for (const s of snapshots()) {
-    const t = s[src];
-    if (!t) continue;
-    const rows = Array.isArray(t.tokens_by_day) ? t.tokens_by_day.filter((d) => d && /^\d{4}-\d{2}-\d{2}$/.test(d.day) && d.day >= firstDay && d.day <= day && isUsage(d.tokens)) : [];
-    for (const d of rows) byDay[d.day] = (byDay[d.day] || 0) + d.tokens;
-    // The file timestamp defines tokens_today's day, never the quota observation.
-    if (beijingDay(s.collected_at || s.updated_at) === day && isUsage(t.tokens_today)) {
-      today += t.tokens_today;
-      any = true;
-    } else {
-      const row = rows.find((d) => d.day === day);
-      if (row) { today += row.tokens; any = true; }
-    }
-  }
-  const manual = data.manual && data.manual[src];
-  if (!any && manual && isUsage(manual.tokens) && beijingDay(manual.updated_at) === day) {
-    today = manual.tokens;
-    byDay[day] = today;
-    any = true;
-  }
-  return any || Object.keys(byDay).length ? { today: any ? today : null, byDay } : null;
-}
-
-function ring(p, pct, lv) {
-  const r = 42, c = 2 * Math.PI * r;
-  const v = pct == null ? 0 : Math.max(0, Math.min(100, pct));
-  const color = lv === "crit" ? "var(--crit)" : lv === "warn" ? "var(--warn)" : p.color;
-  const tickAngle = (0.8 * 360 - 90) * Math.PI / 180;
-  const tx1 = 50 + (r - 5) * Math.cos(tickAngle), ty1 = 50 + (r - 5) * Math.sin(tickAngle);
-  const tx2 = 50 + (r + 5) * Math.cos(tickAngle), ty2 = 50 + (r + 5) * Math.sin(tickAngle);
-  return `<svg class="ring" viewBox="0 0 100 100" role="img" aria-label="${esc(p.name)} 已用 ${pct == null ? "未知" : Math.round(v) + "%"}">
-    <defs><linearGradient id="agy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--c-agy-a)"/><stop offset="1" stop-color="var(--c-agy-b)"/></linearGradient></defs>
-    <circle class="track" cx="50" cy="50" r="${r}" fill="none" stroke-width="7"/>
-    <circle class="arc" cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
-      stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - v / 100)}" transform="rotate(-90 50 50)" ${v === 0 ? 'stroke-opacity="0"' : ""}/>
-    <line class="tick" x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.7"><title>80% 警戒线</title></line>
-  </svg>`;
-}
-
-function renderGauges() {
-  $("gauges").innerHTML = POOLS.map((p) => {
-    const r = poolReading(p), lv = level(r.pct);
-    const stale = r.pct != null && minsAgo(r.when) > STALE_MIN;
-    const unknownTime = r.pct != null && !Number.isFinite(minsAgo(r.when));
-    const chip = r.reason || (unknownTime ? "时间未知" : stale ? "数据过期" : LEVEL[lv]);
-    const chipLevel = stale || unknownTime ? "warn" : lv;
-    const tk = p.tokens ? tokensOf(p.tokens) : null;
-    const reset = until(r.reset);
-    const pctHtml = r.pct == null ? '<div class="pct none">—</div>' : `<div class="pct">${Math.round(r.pct)}<small>%</small></div>`;
-    const rows = [
-      `<div class="g-row"><span>重置</span><b>${reset || "—"}</b></div>`,
-      `<div class="g-row"><span>今日</span><b>${p.tokens ? fmtText(tk && tk.today) : "无记录"}</b></div>`,
-    ];
-    if (r.extra) rows.push(`<div class="g-row"><span>${r.extra[0]}</span><b>${r.extra[1]}</b></div>`);
-    rows.push(`<div class="g-row"><span>${r.auto ? "自动采集" : r.pct != null ? "手动更新" : "观测"}</span><b>${r.when ? ago(r.when) : "—"}</b></div>`);
-    return `<article class="gauge" aria-label="${esc(p.name)}">
-      <div class="g-head">
-        <img class="logo" src="${p.logo}" alt="">${p.sub ? `<img class="logo logo-sub" src="${p.sub}" alt="">` : ""}
-        <div style="min-width:0"><div class="g-name">${esc(p.name)}</div><div class="g-members">${esc(p.members)}</div></div>
+/* ---------- 额度卡：按池保留 DOM，只更新属性，环形图才能平滑过渡 ---------- */
+function cardSkeleton(card) {
+  const a = (0.8 * 360 - 90) * Math.PI / 180;
+  const t = k => [60 + (R + k) * Math.cos(a), 60 + (R + k) * Math.sin(a)];
+  const [x1, y1] = t(-9), [x2, y2] = t(9);
+  const logo = card.logo
+    ? `<img src="${esc(card.logo)}" alt="" width="18" height="18">`
+    : `<span aria-hidden="true">${esc(card.name.slice(0, 1).toUpperCase())}</span>`;
+  const el = document.createElement('article');
+  el.className = 'panel gauge';
+  el.dataset.provider = card.provider;
+  el.setAttribute('aria-labelledby', `name-${card.provider}`);
+  el.innerHTML = `
+    <div class="g-head">
+      <span class="logo${card.wide ? ' wide' : ''}">${logo}</span>
+      <div class="g-title"><h2 class="g-name" id="name-${esc(card.provider)}">${esc(card.name)}</h2><div class="g-members">${esc(card.members)}</div></div>
+      <span class="g-src" data-f="src"></span>
+    </div>
+    <div class="ring-box">
+      <svg class="ring" viewBox="0 0 120 120" role="img" data-f="ring">
+        <title data-f="ring-title"></title>
+        <circle data-f="track" cx="60" cy="60" r="${R}" fill="none" stroke-width="10"/>
+        <circle class="arc" data-f="arc" cx="60" cy="60" r="${R}" fill="none" stroke-width="10" stroke-linecap="round"
+          stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 60 60)"/>
+        <line class="tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <div class="ring-center" aria-hidden="true">
+        <div class="pct" data-f="pct"></div>
+        <div class="pct-label" data-f="pct-label"></div>
+        <div class="pct-alt" data-f="pct-alt"></div>
       </div>
-      <div class="ring-box">${ring(p, r.pct, lv)}<div class="ring-center">${pctHtml}<div class="pct-label">本周期已用</div></div></div>
-      <div class="g-foot"><span class="chip ${chipLevel}">${ICON[chipLevel]}${esc(chip)}</span>${rows.join("")}</div>
-    </article>`;
-  }).join("");
+    </div>
+    <div class="g-foot">
+      <div class="g-tok"><span>今日 token</span><span data-f="tok"></span></div>
+      <div class="g-row chips" data-f="chips"></div>
+      <div class="g-row reset" data-f="reset-row"><span>重置</span><b data-f="reset"></b></div>
+      <div class="g-row extra" data-f="extra-row"><span data-f="extra-k"></span><b data-f="extra-v"></b></div>
+    </div>`;
+  return el;
 }
 
-function renderTotals() {
-  const parts = SERIES.map((s) => ({ ...s, t: tokensOf(s.key) }));
-  const today = parts.reduce((a, s) => a + ((s.t && s.t.today) || 0), 0);
-  const days = [...new Set(parts.flatMap((s) => (s.t ? Object.keys(s.t.byDay) : [])))].sort().slice(-7);
-  const week = parts.reduce((a, s) => a + days.reduce((b, d) => b + ((s.t && s.t.byDay[d]) || 0), 0), 0);
-  const [v, u] = fmt(today);
-  $("total-today").innerHTML = parts.some((s) => s.t && s.t.today != null) ? `${v}<span class="big-unit">${u}</span>` : "—";
-  $("total-week").textContent = `近 7 天 ${days.length ? fmtText(week) : "—"}`;
+/** Replace markup only when it changed, so periodic re-renders keep focus and open tooltips. */
+function setHtml(el, html) { if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; } }
 
-  // 今日占比环：两段，段间留 2 单位空隙
-  const r = 40, c = 2 * Math.PI * r;
-  let offset = 0, segs = "";
-  for (const s of parts) {
-    const val = (s.t && s.t.today) || 0;
-    if (!today || !val) continue;
-    const len = (val / today) * c;
-    const gap = parts.filter((x) => x.t && x.t.today).length > 1 ? 2 : 0;
-    segs += `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${s.color}" stroke-width="10" stroke-dasharray="${Math.max(0, len - gap)} ${c}" stroke-dashoffset="${-offset}" transform="rotate(-90 50 50)"/>`;
-    offset += len;
+function updateCard(el, card, now, loading) {
+  const f = k => el.querySelector(`[data-f="${k}"]`);
+  const has = card.usedPct != null;
+  const used = has ? Math.round(card.usedPct) : null, left = has ? 100 - used : null;
+  const color = has ? `var(--${card.level})` : 'var(--none)';
+  f('src').textContent = loading ? '' : !has ? '无读数' : card.manual ? '手动' : '自动';
+  // var() 只在 style 里可靠（SVG 展示属性不一定解析），同时让 CSS transition 生效
+  f('track').style.stroke = `color-mix(in oklab, ${color} 20%, var(--surface))`;
+  const arc = f('arc');
+  arc.style.stroke = color;
+  arc.style.strokeOpacity = has && card.usedPct > 0 ? '1' : '0';
+  arc.dataset.target = String(C * (1 - (has ? card.usedPct : 0) / 100));
+  f('ring-title').textContent = has ? `${card.name} ${card.windowLabel}已用 ${used}%，剩余 ${left}%，状态${LEVEL[card.level]}；80% 为警戒线` : `${card.name} 暂无额度读数`;
+  if (has) {
+    const main = mode === 'used' ? used : left;
+    f('pct').className = 'pct';
+    f('pct').innerHTML = `${main}<small>%</small>`;
+    f('pct-label').textContent = `${card.windowLabel}${mode === 'used' ? '已用' : '剩余'}`;
+    f('pct-alt').textContent = mode === 'used' ? `剩余 ${left}%` : `已用 ${used}%`;
+  } else {
+    f('pct').className = 'pct none';
+    f('pct').textContent = '—';
+    f('pct-label').textContent = loading ? '读取中…' : card.reason ?? '暂无读数';
+    f('pct-alt').textContent = '';
   }
-  $("share").innerHTML = `<circle class="track" cx="50" cy="50" r="${r}" fill="none" stroke-width="10"/>${segs}`;
+  setHtml(f('tok'), card.tokens != null ? num(card.tokens) : `<span class="none">${loading ? '读取中…' : '无用量记录'}</span>`);
 
-  $("legend").innerHTML = parts.map((s) => {
-    const val = s.t && s.t.today;
-    return `<div class="lg"><span class="sw" style="background:${s.color}"></span><span class="lg-name">${s.name}</span><span class="lg-val">${fmtText(val)}</span><span class="lg-pct">${today && val != null ? Math.round((val / today) * 100) + "%" : ""}</span></div>`;
-  }).join("");
+  let chips = loading ? '' : `<span class="chip ${card.level}">${ICON[card.level]}${esc(card.reason ?? LEVEL[card.level])}</span>`;
+  // 手动、仅 token 的池同样标记：卡上任一展示中的数字过期都要提示
+  if (!loading && card.stale && card.stale !== 'fresh') {
+    const age = card.staleAt ? `${card.manual ? '手动' : '数据'} ${relativeTime(card.staleAt, now)}` : '更新时间未知';
+    chips += `<span class="chip ${card.stale}">${STALE_ICON[card.stale]}${esc(age)}</span>`;
+  }
+  setHtml(f('chips'), chips || '&nbsp;');
 
-  renderBars(parts, days);
+  const reset = untilTime(card.resetsAt, now);
+  f('reset-row').hidden = !reset;
+  f('reset').textContent = reset ?? '';
+  f('reset').title = card.resetsAt ? absoluteTime(card.resetsAt) : '';
+
+  let extra = null;
+  if (card.shortPct != null) extra = ['5 小时窗口', `${Math.round(card.shortPct)}%`];
+  else if (card.manual) extra = ['手动填写', timeTag(card.readingAt, now)];
+  else if (has) extra = ['自动采集', card.readingAt ? timeTag(card.readingAt, now) : '时间未知'];
+  f('extra-row').hidden = !extra;
+  if (extra) { f('extra-k').textContent = extra[0]; setHtml(f('extra-v'), extra[1]); }
+}
+
+function renderGauges(cards, now, loading) {
+  const box = $('gauges');
+  const fresh = [];
+  cards.forEach((card, i) => {
+    let el = box.querySelector(`[data-provider="${CSS.escape(card.provider)}"]`);
+    if (!el) { el = cardSkeleton(card); fresh.push(el); }
+    // Move only when out of order: moving a node would drop keyboard focus inside it.
+    if (box.children[i] !== el) box.insertBefore(el, box.children[i] ?? null);
+    updateCard(el, card, now, loading);
+  });
+  for (const el of box.querySelectorAll('.gauge')) if (!cards.some(c => c.provider === el.dataset.provider)) el.remove();
+  // New arcs start empty; set the target on the next frame so the transition plays.
+  const apply = () => box.querySelectorAll('.arc').forEach(a => { a.style.strokeDashoffset = a.dataset.target; });
+  if (fresh.length) requestAnimationFrame(() => requestAnimationFrame(apply)); else apply();
+}
+
+/* ---------- 合计 ---------- */
+function renderTotals(result, cards) {
+  const loading = !result;
+  const total = result?.totalTokens ?? 0;
+  const known = cards.filter(c => c.tokens != null);
+  const sum = sumCardTokens(cards);
+  if (sum !== total) console.warn('合计与逐池相加不一致', { total, sum });
+  const days = buildDays(cards);
+  const week = days.reduce((a, d) => a + d.total, 0);
+  $('total').innerHTML = known.length ? num(total) : '—';
+  $('total-sub').textContent = loading ? '读取中…' : known.length
+    ? `精确值 ${formatExact(total)}${days.length ? ` · 近 ${days.length} 天 ${formatCompactText(week)}` : ''}`
+    : '暂无 token 记录';
+
+  // 今日占比环：段间留 2.5 单位表面色空隙
+  const r = 40, c = 2 * Math.PI * r, parts = known.filter(k => k.tokens > 0);
+  let off = 0, segs = `<circle class="track" cx="50" cy="50" r="${r}" fill="none" stroke-width="12"/>`;
+  for (const s of parts) {
+    const len = (s.tokens / total) * c, gap = parts.length > 1 ? 2.5 : 0;
+    segs += `<circle cx="50" cy="50" r="${r}" fill="none" style="stroke:${SERIES_COLOR[s.provider] ?? 'var(--ink-3)'}" stroke-width="12" stroke-dasharray="${Math.max(0, len - gap)} ${c}" stroke-dashoffset="${-off}" transform="rotate(-90 50 50)"/>`;
+    off += len;
+  }
+  $('share').innerHTML = segs;
+
+  $('legend').innerHTML = cards.map(card => card.tokens != null
+    ? `<li class="lg"><span class="sw" style="background:${SERIES_COLOR[card.provider] ?? 'var(--ink-3)'}"></span><span class="lg-name">${esc(card.name)}</span><span class="lg-val">${num(card.tokens)}</span><span class="lg-pct">${total ? Math.round(card.tokens / total * 100) + '%' : ''}</span></li>`
+    : `<li class="lg off"><span class="sw"></span><span class="lg-name">${esc(card.name)}</span><span class="lg-val">${loading ? '…' : '无记录'}</span><span class="lg-pct"></span></li>`).join('');
+  if (loading) return; // 柱图区保留“等待数据…”
+  renderBars(cards, days);
 }
 
 function niceMax(v) {
   if (v <= 0) return 1;
-  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  const p = 10 ** Math.floor(Math.log10(v));
   for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
   return 10 * p;
 }
 
-function renderBars(parts, days) {
-  const box = $("bars");
-  if (!days.length) { box.innerHTML = '<div class="empty">等待第一份快照…</div>'; return; }
-  const W = 300, H = 120, L = 34, T = 6, B = 18;
-  const totals = days.map((d) => parts.reduce((a, s) => a + ((s.t && s.t.byDay[d]) || 0), 0));
-  const max = niceMax(Math.max(...totals));
-  const y = (v) => T + (H - T - B) * (1 - v / max);
-  const slot = (W - L) / days.length, bw = Math.min(18, slot * 0.55);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="近 7 天每日 token，按 Agent 堆叠">`;
-  for (const t of [0, max]) svg += `<line class="grid" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${fmtText(t)}</text>`;
+function renderBars(cards, days) {
+  const box = $('bars');
+  if (!days.length) { box.innerHTML = '<div class="empty">暂无逐日记录</div>'; return; }
+  const W = 340, H = 130, L = 40, T = 8, B = 18;
+  const max = niceMax(Math.max(...days.map(d => d.total)));
+  const y = v => T + (H - T - B) * (1 - v / max);
+  const slot = (W - L) / days.length, bw = Math.min(20, slot * 0.55);
+  const today = beijingDay(Date.now());
+  let svg = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
+  for (const t of [max / 2, max]) svg += `<line class="grid" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${formatCompactText(t)}</text>`;
+  svg += `<line class="axis" x1="${L}" x2="${W}" y1="${y(0)}" y2="${y(0)}"/><text x="${L - 6}" y="${y(0) + 3}" text-anchor="end">0</text>`;
   days.forEach((d, i) => {
     const cx = L + slot * i + slot / 2;
-    let base = y(0);
-    parts.forEach((s, j) => {
-      const val = (s.t && s.t.byDay[d]) || 0;
-      if (!val) return;
-      const h = Math.max(0, y(0) - y(val));
-      const top = base - h;
-      const isTop = parts.slice(j + 1).every((x) => !((x.t && x.t.byDay[d]) || 0));
-      const gap = base === y(0) ? 0 : 1;
-      svg += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${Math.max(0, h - gap)}" rx="${isTop ? 3 : 0}" fill="${s.color}"/>`;
-      base = top;
+    let baseY = y(0);
+    const top = d.parts.reduce((last, v, j) => (v > 0 ? j : last), -1);
+    d.parts.forEach((v, j) => {
+      if (!v) return;
+      const h = y(0) - y(v), gap = baseY === y(0) ? 0 : 2, color = SERIES_COLOR[cards[j].provider] ?? 'var(--ink-3)';
+      const yTop = baseY - h, rad = Math.min(4, Math.max(0, h - gap) / 2, bw / 2);
+      svg += j === top && rad > 0
+        ? `<path d="M${cx - bw / 2},${baseY - gap} V${yTop + rad} q0,-${rad} ${rad},-${rad} H${cx + bw / 2 - rad} q${rad},0 ${rad},${rad} V${baseY - gap} Z" style="fill:${color}"/>`
+        : `<rect x="${cx - bw / 2}" y="${yTop}" width="${bw}" height="${Math.max(0, h - gap)}" style="fill:${color}"/>`;
+      baseY = yTop;
     });
     svg += `<rect class="hit" x="${L + slot * i}" y="${T}" width="${slot}" height="${H - T - B}" data-i="${i}"/>`;
-    svg += `<text x="${cx}" y="${H - 4}" text-anchor="middle">${d.slice(8)}</text>`;
+    svg += `<text x="${cx}" y="${H - 4}" text-anchor="middle">${d.day === today ? '今天' : d.day.slice(5).replace('-', '/')}</text>`;
   });
-  box.innerHTML = svg + '</svg><div class="tip" id="tip" hidden></div>';
-  const tip = $("tip");
-  box.querySelectorAll(".hit").forEach((h) => {
-    h.addEventListener("pointerenter", () => {
-      const i = +h.dataset.i, d = days[i];
-      tip.textContent = `${d.slice(5)}  ` + parts.map((s) => `${s.name} ${fmtText((s.t && s.t.byDay[d]) || 0)}`).join(" · ");
-      const scale = box.querySelector("svg").getBoundingClientRect().width / W;
-      tip.style.left = `${(L + slot * i + slot / 2) * scale}px`;
-      tip.style.top = `${y(totals[i]) * scale}px`;
-      tip.hidden = false;
+  svg += '</svg>';
+  const series = cards.filter((c, j) => days.some(d => d.parts[j] > 0));
+  const table = `<table class="sr"><caption>近 ${days.length} 天每日 token</caption><thead><tr><th scope="col">日期</th>${series.map(c => `<th scope="col">${esc(c.name)}</th>`).join('')}<th scope="col">合计</th></tr></thead><tbody>${
+    days.map(d => `<tr><th scope="row">${d.day}</th>${series.map(c => `<td>${formatExact(d.parts[cards.indexOf(c)])}</td>`).join('')}<td>${formatExact(d.total)}</td></tr>`).join('')}</tbody></table>`;
+  box.innerHTML = svg + table;
+  box.querySelectorAll('.hit').forEach(hit => {
+    hit.addEventListener('pointerenter', () => {
+      const d = days[+hit.dataset.i];
+      const text = `${d.day.slice(5)}  合计 ${formatExact(d.total)} · ` + series.map(c => `${c.name} ${formatExact(d.parts[cards.indexOf(c)])}`).join(' · ');
+      const rect = hit.getBoundingClientRect();
+      const k = box.querySelector('svg').getBoundingClientRect().height / H;
+      showTip(text, rect.left + rect.width / 2, box.querySelector('svg').getBoundingClientRect().top + y(d.total) * k);
     });
-    h.addEventListener("pointerleave", () => { tip.hidden = true; });
+    hit.addEventListener('pointerleave', hideTip);
   });
 }
 
-function renderStatus() {
-  const items = [["Mac", data.mac && data.mac.collected_at], ["云电脑", data["grok-cloud"] && data["grok-cloud"].collected_at]];
-  $("status").innerHTML = items.map(([name, at]) => {
-    const m = minsAgo(at);
-    const cls = !Number.isFinite(m) ? "none" : m > STALE_MIN ? "stale" : "ok";
-    return `<span class="src" title="${cls === "stale" ? "超过 30 分钟未更新" : ""}"><span class="dot ${cls}"></span>${name} ${ago(at)}</span>`;
-  }).join("");
+/* ---------- 顶栏状态与提示条 ---------- */
+function renderStatus(result, now, cards) {
+  const head = headerStatus(result, now, cards);
+  const fresh = $('fresh');
+  if (!result) {
+    fresh.className = 'fresh loading';
+    fresh.textContent = lastError ? '数据读取失败' : '正在读取数据…';
+  } else if (!head.updatedAt) {
+    fresh.className = 'fresh critical';
+    fresh.innerHTML = `${ICON.crit}暂无自动采集数据`;
+  } else {
+    const lv = head.staleLevel;
+    fresh.className = `fresh ${lv === 'fresh' ? 'fresh-ok' : lv}`;
+    fresh.innerHTML = `${STALE_ICON[lv]}上次更新 ${timeTag(head.updatedAt, now)}<span class="abs">（${esc(absoluteTime(head.updatedAt))}）</span><span class="lvl-sep"> · </span><span class="lvl">${STALE_TEXT[lv]}</span>`;
+  }
+  $('srcs').innerHTML = head.sources.map(s => `<span class="src"><span class="dot ${s.updatedAt ? `d-${s.staleLevel}` : ''}" aria-hidden="true"></span>${esc(s.label)} ${s.updatedAt ? timeTag(s.updatedAt, now) : s.failed ? '读取失败' : '无数据'}</span>`).join('');
+
+  // 提示条：断网 / 拉取失败 / 过期，按严重程度只显示一条主信息
+  const msgs = [];
+  let lv = 'warning';
+  const offline = navigator.onLine === false;
+  const failed = result?.errors ?? [];
+  if (offline) msgs.push('网络已断开，显示的是上次拉取的数据，联网后自动刷新。');
+  if (!result && lastError) { msgs.push('数据读取失败，稍后自动重试。'); lv = 'critical'; }
+  if (result && !head.hasData) { msgs.push('暂时拉不到任何额度数据，稍后自动重试。'); lv = 'critical'; }
+  else if (failed.length && !offline) msgs.push(`部分数据拉取失败（${failed.map(e => esc(e.source)).join('、')}），已保留上次数据。`);
+  if (result && head.staleItems.length) {
+    const items = head.staleItems.map(i => `${esc(i.label)}${i.kind === 'card' && i.manual ? '（手动）' : ''} ${i.at ? `${esc(relativeTime(i.at, now))}（${esc(absoluteTime(i.at))}）` : '时间未知'}`);
+    msgs.push(`<b>数据已过期</b>：${items.join('；')}，相关数字可能不是最新。`);
+    if (head.staleLevel === 'critical') lv = 'critical';
+  }
+  const banner = $('banner');
+  banner.hidden = !msgs.length;
+  banner.className = `banner ${lv}`;
+  setHtml(banner, msgs.length ? `${lv === 'critical' ? ICON.crit : ICON.warn}<span class="msg">${msgs.join(' ')}</span>` : '');
+  reserveBannerSpace();
 }
 
-function render() { renderGauges(); renderTotals(); renderStatus(); }
+/** 底部固定提示条：给 .app 底部留出同高空白，滚到底时不遮住最后一排卡片。 */
+function reserveBannerSpace() {
+  const banner = $('banner');
+  const fixed = !banner.hidden && getComputedStyle(banner).position === 'fixed';
+  document.documentElement.style.setProperty('--banner-space', fixed ? `${banner.offsetHeight + 12}px` : '0px');
+}
+addEventListener('resize', reserveBannerSpace, { passive: true });
 
-async function load() {
-  const bust = `?t=${Math.floor(Date.now() / 60000)}`;
-  const get = (name) => fetch(DATA + name + ".json" + bust, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  const [mac, cloud, manual] = await Promise.all([get("mac"), get("grok-cloud"), get("manual")]);
-  data = { mac: mac || data.mac, "grok-cloud": cloud || data["grok-cloud"], manual: manual || data.manual };
+let totalsFor; // 合计区只在新数据到达时重建，定时重绘不打断悬停与键盘焦点
+function render() {
+  const now = Date.now();
+  try {
+    // 首次加载前先画空卡占位，数据到达后不产生布局偏移
+    const cards = buildCards(last?.pools ?? [], now);
+    renderGauges(cards, now, !last);
+    if (totalsFor !== last) { renderTotals(last, cards); totalsFor = last; }
+    renderStatus(last, now, cards);
+  } catch (error) {
+    console.error('渲染失败', error);
+  }
+}
+
+/* ---------- 精确值提示：悬停 / 长按 / 点按 / 键盘聚焦 ---------- */
+const tip = $('tip');
+function showTip(text, x, y) {
+  tip.textContent = text;
+  tip.hidden = false;
+  const w = tip.offsetWidth / 2 + 6;
+  tip.style.left = `${Math.min(Math.max(x, w), innerWidth - w)}px`;
+  tip.style.top = `${Math.max(y, tip.offsetHeight + 12)}px`;
+}
+function hideTip() { tip.hidden = true; }
+const tipFor = el => { const r = el.getBoundingClientRect(); showTip(el.dataset.exact, r.left + r.width / 2, r.top); };
+let press = null;
+document.addEventListener('pointerover', e => { const el = e.target.closest?.('.num'); if (el && e.pointerType === 'mouse') tipFor(el); });
+document.addEventListener('pointerout', e => { if (e.target.closest?.('.num') && e.pointerType === 'mouse') hideTip(); });
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest?.('.num');
+  clearTimeout(press);
+  if (el && e.pointerType !== 'mouse') press = setTimeout(() => tipFor(el), 450);
+});
+for (const type of ['pointerup', 'pointercancel']) document.addEventListener(type, () => clearTimeout(press));
+document.addEventListener('click', e => { const el = e.target.closest?.('.num'); if (el) tipFor(el); else if (!e.target.closest?.('.hit')) hideTip(); });
+document.addEventListener('contextmenu', e => { if (e.target.closest?.('.num')) e.preventDefault(); });
+document.addEventListener('focusin', e => { if (e.target.matches?.('.num:focus-visible')) tipFor(e.target); });
+document.addEventListener('focusout', e => { if (e.target.matches?.('.num')) hideTip(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTip(); });
+addEventListener('scroll', hideTip, { passive: true });
+
+/* ---------- 工具栏 ---------- */
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   render();
-}
+}));
 
-function tick() {
-  const d = new Date();
-  $("clock").textContent = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
-}
-
-// 屏幕常亮（支持 Wake Lock 的浏览器）
 let lock = null;
 async function setWake(on) {
+  const btn = $('wake');
   try {
-    if (on && "wakeLock" in navigator) {
-      lock = await navigator.wakeLock.request("screen");
-      lock.addEventListener("release", () => { if (document.visibilityState !== "visible") return; $("wake").setAttribute("aria-pressed", "false"); });
-      $("wake").setAttribute("aria-pressed", "true");
+    if (on) {
+      lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => {
+        if (document.visibilityState === 'visible') {
+          btn.setAttribute('aria-pressed', 'false');
+          lock = null;
+        }
+      });
+      btn.setAttribute('aria-pressed', 'true');
     } else {
-      if (lock) await lock.release();
+      await lock?.release();
       lock = null;
-      $("wake").setAttribute("aria-pressed", "false");
+      btn.setAttribute('aria-pressed', 'false');
     }
-  } catch { $("wake").setAttribute("aria-pressed", "false"); $("wake").textContent = "常亮不可用"; }
+  } catch {
+    btn.setAttribute('aria-pressed', 'false');
+    lock = null;
+  }
 }
-$("wake").addEventListener("click", () => setWake($("wake").getAttribute("aria-pressed") !== "true"));
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") { load(); if ($("wake").getAttribute("aria-pressed") === "true") setWake(true); }
-});
-if (!("wakeLock" in navigator)) $("wake").hidden = true;
-
-// 全屏按钮：只在支持的浏览器显示（iOS 请“添加到主屏幕”）
-if (document.documentElement.requestFullscreen) {
-  $("full").hidden = false;
-  $("full").addEventListener("click", () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    else document.documentElement.requestFullscreen().catch(() => {});
+if ('wakeLock' in navigator) {
+  $('wake').hidden = false;
+  $('wake').addEventListener('click', () => setWake($('wake').getAttribute('aria-pressed') !== 'true'));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && $('wake').getAttribute('aria-pressed') === 'true') {
+      setWake(true);
+    }
   });
 }
 
-render();
+const docEl = document.documentElement;
+const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+const exitFs = () => (document.exitFullscreen ? document.exitFullscreen() : (document.webkitExitFullscreen ? document.webkitExitFullscreen() : Promise.resolve()));
+const getFs = () => document.fullscreenElement || document.webkitFullscreenElement;
+
+if (reqFs) {
+  const fullBtn = $('full');
+  fullBtn.hidden = false;
+  fullBtn.addEventListener('click', async () => {
+    try {
+      if (getFs()) {
+        await exitFs();
+      } else {
+        await reqFs.call(docEl);
+        if ('wakeLock' in navigator && !lock) {
+          setWake(true);
+        }
+      }
+    } catch {}
+  });
+  const onFsChange = () => {
+    const isFs = Boolean(getFs());
+    fullBtn.setAttribute('aria-pressed', String(isFs));
+    fullBtn.textContent = isFs ? '退出' : '全屏';
+  };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+}
+
+/* ---------- 时钟、相对时间与自动刷新 ---------- */
+function tick() {
+  $('clock').textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
 tick();
 setInterval(tick, 15000);
-load();
-setInterval(load, REFRESH_MS);
-setInterval(renderStatus, 60000);
+setInterval(render, 30000); // 相对时间与过期等级随时间推进，不必等下一次拉取
+
+const onUpdate = result => { last = result; lastError = null; render(); };
+const onError = error => { lastError = error; console.error('额度刷新失败', error); render(); };
+startQuotaRefresh(onUpdate, { load, onError });
+addEventListener('online', () => load().then(onUpdate, onError));
+addEventListener('offline', render);
+render();
+
+/* ---------- 卡06：夜间模式 ---------- */
+(function () {
+  const nightBtn = $('night');
+  if (nightBtn) {
+    const saved = localStorage.getItem('quota-night') === '1';
+    document.body.classList.toggle('night-dim', saved);
+    nightBtn.setAttribute('aria-pressed', String(saved));
+    nightBtn.addEventListener('click', () => {
+      const on = nightBtn.getAttribute('aria-pressed') !== 'true';
+      document.body.classList.toggle('night-dim', on);
+      nightBtn.setAttribute('aria-pressed', String(on));
+      localStorage.setItem('quota-night', on ? '1' : '0');
+    });
+  }
+})();
+
 </script>
 </body>
 </html>

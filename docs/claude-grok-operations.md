@@ -56,7 +56,7 @@ python3 -c 'import json; d=json.load(open("/tmp/quota-check.json")); print({k:{f
 
 Mac 使用 `QUOTA_MACHINE=mac`。保留原有发布频率（Mac 每 10 分钟、云电脑任务后）。
 部署后由运行任务执行 `quota-publish`，检查 data 分支对应 JSON 中的 provider 节点，再刷新网页。
-前端每两分钟读取一次 raw JSON；文件 `collected_at` 是心跳，额度以 `quota_observed_at` 为准。
+前端通过 main 的数据模块每五分钟读取一次 raw JSON，回到前台立即刷新；文件 `collected_at` 是心跳，额度以 `quota_observed_at` 为准，token 过期判断独立使用 `tokens_observed_at`。
 
 ## 状态与恢复
 
@@ -86,7 +86,9 @@ quota-publish set grok 30 2026-11-01 12345
 
 ```sh
 python3 -m unittest discover -s tests -v
-node tests/dashboard.test.cjs
+for test_file in tests/*.test.*; do
+  node "$test_file" || exit 1
+done
 git diff --check
 ```
 
