@@ -86,14 +86,16 @@ const windowOf = pool => pool.window ?? pool.id?.split(':').at(-1);
 const isShortWindow = pool => windowOf(pool) === '5h' || (pool.window_minutes != null && pool.window_minutes <= 300);
 const windowLabel = pool => isManual(pool) ? '本周期' : (windowOf(pool) === 'weekly' || pool.window_minutes === 10080) ? '本周' : '本周期';
 
-/** Latest reading wins (auto sources before manual); within one snapshot the most-used bucket wins. */
-function pickReading(readings) {
+/** Latest reading wins; non-subscription providers prefer auto. Ties prefer auto, then most-used bucket. */
+function pickReading(readings, newestManual = false) {
   if (!readings.length) return null;
   const auto = readings.filter(p => !isManual(p));
-  const pool = auto.length ? auto : readings;
+  const pool = auto.length && !newestManual ? auto : readings;
   const time = p => Date.parse(p.updated_at) || 0;
   const latest = Math.max(...pool.map(time));
-  return pool.filter(p => time(p) === latest).reduce((a, b) => (b.used_pct > a.used_pct ? b : a));
+  const candidates = pool.filter(p => time(p) === latest);
+  const automatic = candidates.filter(p => !isManual(p));
+  return (automatic.length ? automatic : candidates).reduce((a, b) => (b.used_pct > a.used_pct ? b : a));
 }
 
 /** Group pools into one card per provider. */
@@ -111,26 +113,43 @@ export function buildCards(pools, now = Date.now()) {
     const byDay = new Map();
     const tokenTimes = [];
     for (const pool of rows) {
-      if (pool.tokens == null) continue;
       const key = tokenKey(pool);
       if (seen.has(key)) continue;
       seen.add(key);
-      tokens = (tokens ?? 0) + pool.tokens;
-      tokenTimes.push(pool.updated_at ?? null);
+      if (pool.tokens != null) {
+        tokens = (tokens ?? 0) + pool.tokens;
+        tokenTimes.push(pool.tokens_observed_at ?? pool.updated_at ?? null);
+      }
       for (const d of pool.tokens_by_day ?? []) {
         if (typeof d?.day === 'string' && Number.isFinite(d.tokens)) byDay.set(d.day, (byDay.get(d.day) ?? 0) + d.tokens);
       }
     }
 
-    const readings = rows.filter(p => p.used_pct != null);
-    const main = pickReading(readings.filter(p => !isShortWindow(p))) ?? pickReading(readings);
-    const short = main && !isShortWindow(main) ? pickReading(readings.filter(isShortWindow)) : null;
+    const subscription = provider === 'claude' || provider === 'grok';
+    const allReadings = rows.filter(p => p.used_pct != null);
+    let readings = subscription ? allReadings.filter(p => !p.resets_at || !Number.isFinite(Date.parse(p.resets_at)) || Date.parse(p.resets_at) > now) : allReadings;
+    if (subscription) {
+      const latest = pickReading(readings, true);
+      if (latest) readings = readings.filter(p => p.source === latest.source && p.updated_at === latest.updated_at);
+    }
+    const main = pickReading(readings.filter(p => !isShortWindow(p)), subscription) ?? pickReading(readings, subscription);
+    // Subscription windows must belong to the chosen device observation; manual
+    // fallback must not show an unrelated device's five-hour value next to it.
+    const shortRows = readings.filter(p => isShortWindow(p) && (!subscription || (main && !isManual(main)
+      && p.source === main.source && p.updated_at === main.updated_at)));
+    const short = main && !isShortWindow(main) ? pickReading(shortRows, subscription) : null;
+    const status = rows.find(p => p.quota_status && p.quota_status !== 'not_configured')?.quota_status ?? rows[0]?.quota_status;
+    const reason = !main && subscription ? allReadings.length ? '周期已结束' : ({
+      not_configured: '待登录采集', auth_required: '登录已失效', request_failed: '额度读取失败',
+      rate_limited: '接口限流', unsupported: '额度暂不可读',
+    }[status] ?? (tokens != null || byDay.size ? '仅有 token 记录' : '等待采集')) : null;
     // Every observation shown on the card (ring, 5h figure, tokens) counts; the oldest one sets its age.
     const shown = [...(main ? [main.updated_at ?? null] : []), ...(short ? [short.updated_at ?? null] : []), ...tokenTimes];
     const staleAt = oldestTime(shown);
 
     return {
       ...meta,
+      reason,
       tokens,
       byDay,
       usedPct: main?.used_pct ?? null,

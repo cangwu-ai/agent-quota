@@ -1,0 +1,357 @@
+{
+  "weekly": {
+    "schema_version": 1,
+    "machine": "mac",
+    "collected_at": "2026-10-23T12:00:00+00:00",
+    "updated_at": "2026-10-23T12:00:00+00:00",
+    "pools": [
+      {
+        "id": "codex",
+        "name": "Codex",
+        "provider": "codex",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "claude:10080",
+        "name": "Claude",
+        "provider": "claude",
+        "used_pct": 0,
+        "remaining_pct": 100,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": "2026-10-23T12:00:00+00:00",
+        "resets_at": "2026-10-24T12:00:00+00:00",
+        "tokens_scope": "provider-source"
+      },
+      {
+        "id": "claude:300",
+        "name": "Claude",
+        "provider": "claude",
+        "used_pct": 20,
+        "remaining_pct": 80,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": "2026-10-23T12:00:00+00:00",
+        "resets_at": "2026-10-24T12:00:00+00:00",
+        "tokens_scope": "provider-source"
+      },
+      {
+        "id": "antigravity",
+        "name": "Antigravity",
+        "provider": "antigravity",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "grok",
+        "name": "Grok",
+        "provider": "grok",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      }
+    ],
+    "codex": null,
+    "claude": {
+      "quota_observed_at": "2026-10-23T12:00:00+00:00",
+      "windows": [
+        {
+          "used_percent": 0,
+          "resets_at": "2026-10-24T12:00:00+00:00",
+          "window_minutes": 10080
+        },
+        {
+          "used_percent": 20,
+          "resets_at": "2026-10-24T12:00:00+00:00",
+          "window_minutes": 300
+        }
+      ]
+    },
+    "antigravity": null,
+    "grok": null
+  },
+  "grokLogin": {
+    "schema_version": 1,
+    "machine": "grok-cloud",
+    "collected_at": "2026-10-23T12:00:00+00:00",
+    "updated_at": "2026-10-23T12:00:00+00:00",
+    "pools": [
+      {
+        "id": "codex",
+        "name": "Codex",
+        "provider": "codex",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "claude",
+        "name": "Claude",
+        "provider": "claude",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "antigravity",
+        "name": "Antigravity",
+        "provider": "antigravity",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "grok",
+        "name": "Grok",
+        "provider": "grok",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": 1234,
+        "tokens_period": "today",
+        "tokens_status": "available",
+        "updated_at": null,
+        "resets_at": null,
+        "tokens_scope": "provider-source"
+      }
+    ],
+    "codex": null,
+    "claude": null,
+    "antigravity": null,
+    "grok": {
+      "tokens_observed_at": "2026-10-23T12:00:00+00:00",
+      "quota_status": "auth_required",
+      "tokens_today": 1234,
+      "tokens_by_day": [
+        {
+          "day": "2026-10-23",
+          "tokens": 1234,
+          "output_tokens": null
+        }
+      ]
+    }
+  },
+  "yesterday": {
+    "schema_version": 1,
+    "machine": "mac",
+    "collected_at": "2026-10-21T12:00:00+00:00",
+    "updated_at": "2026-10-21T12:00:00+00:00",
+    "pools": [
+      {
+        "id": "codex",
+        "name": "Codex",
+        "provider": "codex",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "claude",
+        "name": "Claude",
+        "provider": "claude",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": 999,
+        "tokens_period": "today",
+        "tokens_status": "available",
+        "updated_at": "2026-10-23T12:00:00+00:00",
+        "resets_at": null,
+        "tokens_scope": "provider-source"
+      },
+      {
+        "id": "antigravity",
+        "name": "Antigravity",
+        "provider": "antigravity",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "grok",
+        "name": "Grok",
+        "provider": "grok",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      }
+    ],
+    "codex": null,
+    "claude": {
+      "quota_observed_at": "2026-10-23T12:00:00+00:00",
+      "tokens_observed_at": "2026-10-21T12:00:00+00:00",
+      "tokens_today": 999,
+      "tokens_by_day": [
+        {
+          "day": "2026-10-21",
+          "tokens": 999,
+          "output_tokens": null
+        }
+      ]
+    },
+    "antigravity": null,
+    "grok": null
+  },
+  "staleTokens": {
+    "schema_version": 1,
+    "machine": "mac",
+    "collected_at": "2026-10-23T12:00:00+00:00",
+    "updated_at": "2026-10-23T12:00:00+00:00",
+    "pools": [
+      {
+        "id": "codex",
+        "name": "Codex",
+        "provider": "codex",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "claude",
+        "name": "Claude",
+        "provider": "claude",
+        "used_pct": 20,
+        "remaining_pct": 80,
+        "tokens": 50,
+        "tokens_period": "today",
+        "tokens_status": "available",
+        "updated_at": "2026-10-23T12:00:00+00:00",
+        "resets_at": null,
+        "tokens_scope": "provider-source"
+      },
+      {
+        "id": "antigravity",
+        "name": "Antigravity",
+        "provider": "antigravity",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      },
+      {
+        "id": "grok",
+        "name": "Grok",
+        "provider": "grok",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": null
+      }
+    ],
+    "codex": null,
+    "claude": {
+      "quota_observed_at": "2026-10-23T12:00:00+00:00",
+      "tokens_observed_at": "2026-10-23T11:00:00+00:00",
+      "used_percent": 20,
+      "tokens_today": 50
+    },
+    "antigravity": null,
+    "grok": null
+  },
+  "manualZero": {
+    "schema_version": 1,
+    "updated_at": "2026-10-23T12:00:00Z",
+    "pools": [
+      {
+        "id": "grok",
+        "name": "Grok",
+        "provider": "grok",
+        "used_pct": 0,
+        "remaining_pct": 100,
+        "tokens": null,
+        "tokens_period": null,
+        "tokens_status": "unavailable",
+        "updated_at": "2026-10-24T12:00:00+00:00"
+      }
+    ],
+    "grok": {
+      "used_percent": 0,
+      "resets_on": null,
+      "updated_at": "2026-10-24T12:00:00+00:00",
+      "tokens": null
+    }
+  },
+  "manualTokens": {
+    "schema_version": 1,
+    "updated_at": "2026-10-23T12:00:00Z",
+    "pools": [
+      {
+        "id": "grok",
+        "name": "Grok",
+        "provider": "grok",
+        "used_pct": 20,
+        "remaining_pct": 80,
+        "tokens": 444,
+        "tokens_period": "today",
+        "tokens_status": "available",
+        "updated_at": "2026-10-23T12:00:00+00:00"
+      }
+    ],
+    "grok": {
+      "used_percent": 20,
+      "resets_on": null,
+      "updated_at": "2026-10-23T12:00:00+00:00",
+      "tokens": 444
+    }
+  },
+  "oldManualTokens": {
+    "schema_version": 1,
+    "updated_at": "2026-10-23T12:00:00Z",
+    "pools": [
+      {
+        "id": "grok",
+        "name": "Grok",
+        "provider": "grok",
+        "used_pct": null,
+        "remaining_pct": null,
+        "tokens": 444,
+        "tokens_period": "today",
+        "tokens_status": "available",
+        "updated_at": "2026-10-21T12:00:00+00:00"
+      }
+    ],
+    "grok": {
+      "used_percent": null,
+      "resets_on": null,
+      "updated_at": "2026-10-21T12:00:00+00:00",
+      "tokens": 444
+    }
+  }
+}

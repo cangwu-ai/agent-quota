@@ -122,6 +122,9 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
 .bars .hit { fill: transparent; }
 .empty { color: var(--ink-3); font-size: 12px; }
 .note { margin: 0; font-size: 11px; color: var(--ink-3); }
+.source-help { font-size: 12px; color: var(--ink-2); }
+.source-help summary { cursor: pointer; }
+.source-help p { margin: 6px 0 0; }
 .tip { position: fixed; z-index: 10; left: 0; top: 0; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); background: var(--ink); color: var(--page); font-size: 12px; padding: 5px 8px; border-radius: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* 额度卡 */
@@ -225,7 +228,7 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
   .big .u { font-size: 16px; }
   .big-sub { margin-top: 4px; }
   .legend { font-size: 11px; gap: 4px; }
-  .bars-block, .note { display: none; }
+  .bars-block, .note, .source-help { display: none; }
   .gauges { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-height: 0; }
   .gauge { padding: 8px 6px; gap: 4px; border-radius: 12px; min-width: 0; }
   .g-head { gap: 6px; }
@@ -283,7 +286,7 @@ body.night-dim::after {
 
   <main class="main">
     <section class="panel totals" aria-labelledby="total-label">
-      <h2 class="label" id="total-label">今日 token 消耗 · 全部合计</h2>
+      <h2 class="label" id="total-label">今日已记录 token · 北京时间</h2>
       <div class="hero">
         <svg class="share" id="share" viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="40" fill="none" stroke-width="12"/></svg>
         <div>
@@ -301,7 +304,8 @@ body.night-dim::after {
         <h3 class="label" style="margin-bottom:8px">近 7 天 · 按 Agent 堆叠</h3>
         <div class="bars" id="bars"><div class="empty">等待数据…</div></div>
       </div>
-      <p class="note">token 为当日记录（含缓存读取）。没有用量记录的池不计入合计。数字悬停、长按或点按可看精确值。</p>
+      <p class="note">token 含缓存读取，来自本地 Code / Build 日志及手动记录；不代表 App、Bot 全部用量。没有用量记录的池不计入合计。数字悬停、长按或点按可看精确值。</p>
+      <details class="source-help"><summary>额度缺失时如何恢复</summary><p>Claude / Grok 自动额度需要采集设备上的有效订阅登录。未登录时先在该设备重新登录；读取失败时检查网络后等待下次采集。也可按服务商用量页的真实读数更新手动额度。token 记录独立展示，不能换算成订阅百分比。</p></details>
     </section>
     <section class="gauges" id="gauges" aria-label="额度池"></section>
   </main>
@@ -309,7 +313,7 @@ body.night-dim::after {
 <div class="tip" id="tip" role="tooltip" hidden></div>
 
 <script type="module">
-import { createQuotaLoader, loadQuota, startQuotaRefresh } from './frontend/quota-data.mjs';
+import { beijingDay, createQuotaLoader, loadQuota, startQuotaRefresh } from './frontend/quota-data.mjs';
 import {
   PROVIDERS, buildCards, buildDays, sumCardTokens, headerStatus, formatCompact, formatCompactText, formatExact,
   relativeTime, absoluteTime, untilTime,
@@ -408,12 +412,12 @@ function updateCard(el, card, now, loading) {
   } else {
     f('pct').className = 'pct none';
     f('pct').textContent = '—';
-    f('pct-label').textContent = loading ? '读取中…' : '暂无读数';
+    f('pct-label').textContent = loading ? '读取中…' : card.reason ?? '暂无读数';
     f('pct-alt').textContent = '';
   }
   setHtml(f('tok'), card.tokens != null ? num(card.tokens) : `<span class="none">${loading ? '读取中…' : '无用量记录'}</span>`);
 
-  let chips = loading ? '' : `<span class="chip ${card.level}">${ICON[card.level]}${LEVEL[card.level]}</span>`;
+  let chips = loading ? '' : `<span class="chip ${card.level}">${ICON[card.level]}${esc(card.reason ?? LEVEL[card.level])}</span>`;
   // 手动、仅 token 的池同样标记：卡上任一展示中的数字过期都要提示
   if (!loading && card.stale && card.stale !== 'fresh') {
     const age = card.staleAt ? `${card.manual ? '手动' : '数据'} ${relativeTime(card.staleAt, now)}` : '更新时间未知';
@@ -429,6 +433,7 @@ function updateCard(el, card, now, loading) {
   let extra = null;
   if (card.shortPct != null) extra = ['5 小时窗口', `${Math.round(card.shortPct)}%`];
   else if (card.manual) extra = ['手动填写', timeTag(card.readingAt, now)];
+  else if (has) extra = ['自动采集', card.readingAt ? timeTag(card.readingAt, now) : '时间未知'];
   f('extra-row').hidden = !extra;
   if (extra) { f('extra-k').textContent = extra[0]; setHtml(f('extra-v'), extra[1]); }
 }
@@ -494,7 +499,7 @@ function renderBars(cards, days) {
   const max = niceMax(Math.max(...days.map(d => d.total)));
   const y = v => T + (H - T - B) * (1 - v / max);
   const slot = (W - L) / days.length, bw = Math.min(20, slot * 0.55);
-  const today = new Date().toLocaleDateString('sv-SE');
+  const today = beijingDay(Date.now());
   let svg = `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">`;
   for (const t of [max / 2, max]) svg += `<line class="grid" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${formatCompactText(t)}</text>`;
   svg += `<line class="axis" x1="${L}" x2="${W}" y1="${y(0)}" y2="${y(0)}"/><text x="${L - 6}" y="${y(0) + 3}" text-anchor="end">0</text>`;

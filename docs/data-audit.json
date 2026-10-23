@@ -1,0 +1,28 @@
+{
+  "ref": "7dc514778d8e0ac67ae457ba3c8c454ae55fff57",
+  "files": {
+    "mac": {
+      "updated_at": null,
+      "privacy_pass": true,
+      "collect_to_commit_seconds": -4.743304
+    },
+    "grok-cloud": {
+      "updated_at": null,
+      "privacy_pass": true,
+      "collect_to_commit_seconds": 3.307537
+    },
+    "manual": {
+      "updated_at": null,
+      "privacy_pass": true,
+      "collect_to_commit_seconds": null
+    }
+  },
+  "mac_history": {
+    "start": "2026-10-19T21:15:24-04:00",
+    "end": "2026-10-19T22:15:43-04:00",
+    "intervals": 6,
+    "maximum_gap_seconds": 604.0,
+    "passed": true,
+    "evidence": "historical commits; not a live observation or Pages deployment proof"
+  }
+}

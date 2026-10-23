@@ -5,6 +5,11 @@
 - `main` 分支：面板网页。
 - `data` 分支：额度快照，由作者的 Mac 每 10 分钟、云电脑每次执行任务后推送；手动额度用 `quota-set` 更新。
 
+Claude / Grok 支持通过采集设备已有订阅登录只读查询额度；Claude Code / Grok Build 日志用于 token 统计。
+页面分别显示自动/手动读数、过期和登录状态。缺少额度百分比时仍展示已记录 token，不从 token 推算额度。
+
+采集、部署、手动回退及验证见 [Claude / Grok 数据接入](docs/claude-grok-operations.md)。
+
 面板中的 ChatGPT、Codex、Claude、Grok、Antigravity 图标为各自所有者的商标，仅用于标识对应服务。
 
 ## 前端数据模块
@@ -27,7 +32,8 @@
 - `loadQuota()` 并行读取 data 分支 raw 地址的 `data/mac.json`、`data/grok-cloud.json`、`manual.json`。manual 根路径返回 404 时兼容 `data/manual.json`。每次请求有独立防缓存参数及 `cache: no-store`，15 秒超时。
 - 返回 `{ pools, totalTokens, updatedAt, staleLevel, errors }`；`createQuotaLoader({ fetch, now, baseUrl, timeoutMs })` 可创建独立缓存实例。缓存仅保存在当前模块实例内，不跨页面重载。
 - 池保留协议中的字段，`id` 加来源前缀，附带 `source` 和 `staleLevel`。兼容旧版 windows/buckets、tokens_today 与手动 used_percent；未知比例、token 和时间保持 null。
-- `totalTokens` 是所有来源已知的**当日记录 token**之和，非余额或计费总量。新协议仅计 `tokens_period: today`，`provider-source` 同来源同 provider 的多窗口只计一次；跨来源按独立采集日志相加，若上游日志重复仍会重复计数。未知 token 不计入合计，0 表示已知合计为零，不代表所有池都有记录。
+- `totalTokens` 是所有来源已知的**当日记录 token**之和，非余额或计费总量。新协议仅计 `tokens_period: today`，按 token 观测或文件日期校验北京时间当天；七日历史单独保留，不把昨日 token 因新额度响应而记到今天。`provider-source` 同来源同 provider 的多窗口只计一次；跨自动来源按独立采集日志相加，若上游日志重复仍会重复计数。手动 token 仅在记录当天且无自动 token 时回退使用。未知 token 不计入合计，0 表示已知合计为零，不代表所有池都有记录。
+- 同时兼容 PR#2 发布器的 `pools` 和 provider 节点，保留窗口、登录状态、历史及独立额度/token 时间。Claude/Grok 取较新的有效自动或手动额度，已结束周期显示未知；周额度和 5 小时值使用同一次自动观测。
 - `updatedAt` 为最老的来源快照时间，任一来源无时间时为 null；过期状态同时检查文件心跳和池实际观测时间，避免新发布掩盖旧读数。`fresh` 为不超过 30 分钟，`warning` 为超过 30 分钟（黄），`critical` 为超过 60 分钟或时间未知（红）。每池也有独立过期状态。
 - 拉取或解析失败保留该来源上次成功数据，其时间不变；`errors` 返回来源和提示，恢复成功后清除。其余来源仍更新。并发调用合并请求。
 - 另返回 `sources[]`：每个来源的 `{ source, loaded, updatedAt, staleLevel, failed }`，供页面分别展示 Mac / 云电脑的更新时间。
@@ -48,4 +54,13 @@
 
 ```sh
 node --test tests/
+```
+
+若沙箱限制 Node 测试运行器启动子进程，可逐文件执行并检查 TAP 用例数：
+
+```sh
+for test_file in tests/*.test.*; do
+  node "$test_file" || exit 1
+done
+python3 -m unittest discover -s tests -v
 ```
