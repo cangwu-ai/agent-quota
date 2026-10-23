@@ -1,13 +1,13 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-23T10:32:47.056712+00:00",
+ "collected_at": "2026-10-23T10:41:23.685288+00:00",
  "codex": {
-  "observed_at": "2026-10-23T03:57:23.053Z",
+  "observed_at": "2026-10-19T12:59:58.966Z",
   "windows": [
    {
-    "used_percent": 1.0,
+    "used_percent": 7.0,
     "window_minutes": 10080,
-    "resets_at": "2026-10-29T19:11:34+00:00"
+    "resets_at": "2026-10-26T06:52:39+00:00"
    }
   ],
   "tokens_last_5h": 0,
