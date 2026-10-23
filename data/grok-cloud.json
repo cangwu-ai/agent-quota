@@ -1,8 +1,8 @@
 {
  "machine": "grok-cloud",
- "collected_at": "2026-10-23T21:09:59.651043+00:00",
+ "collected_at": "2026-10-23T21:10:28.363032+00:00",
  "codex": {
-  "observed_at": "2026-10-23T21:09:59.594Z",
+  "observed_at": "2026-10-23T21:10:23.716Z",
   "windows": [
    {
     "used_percent": 0.0,
@@ -10,9 +10,9 @@
     "resets_at": "2026-10-30T21:09:18+00:00"
    }
   ],
-  "tokens_last_5h": 630541,
-  "tokens_today": 630541,
-  "output_tokens_today": 2417,
+  "tokens_last_5h": 934763,
+  "tokens_today": 934763,
+  "output_tokens_today": 3038,
   "tokens_by_day": [
    {
     "day": "2026-10-18",
@@ -46,17 +46,17 @@
    },
    {
     "day": "2026-10-24",
-    "tokens": 630541,
-    "output_tokens": 2417
+    "tokens": 934763,
+    "output_tokens": 3038
    }
   ]
  },
  "claude": {
-  "observed_at": "2026-10-23T06:34:43.645000+00:00",
-  "tokens_last_5h": 0,
-  "tokens_today": 0,
-  "output_tokens_today": 0,
-  "output_tokens_7d": 348281,
+  "observed_at": "2026-10-23T21:10:15.877000+00:00",
+  "tokens_last_5h": 65726,
+  "tokens_today": 65726,
+  "output_tokens_today": 1934,
+  "output_tokens_7d": 350215,
   "tokens_by_day": [
    {
     "day": "2026-10-18",
@@ -90,13 +90,13 @@
    },
    {
     "day": "2026-10-24",
-    "tokens": 0,
-    "output_tokens": 0
+    "tokens": 65726,
+    "output_tokens": 1934
    }
   ]
  },
  "antigravity": {
-  "observed_at": "2026-10-23T21:10:01.333764+00:00",
+  "observed_at": "2026-10-23T21:10:32.134378+00:00",
   "buckets": [
    {
     "group": "Gemini Models",
@@ -108,19 +108,19 @@
     "group": "Gemini Models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-24T02:10:01Z"
+    "resets_at": "2026-10-24T02:10:31Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "weekly",
     "used_percent": 0,
-    "resets_at": "2026-10-30T21:10:01Z"
+    "resets_at": "2026-10-30T21:10:31Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-24T02:10:01Z"
+    "resets_at": "2026-10-24T02:10:31Z"
    }
   ]
  }
