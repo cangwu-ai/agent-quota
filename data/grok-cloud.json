@@ -1,6 +1,6 @@
 {
  "machine": "grok-cloud",
- "collected_at": "2026-10-23T02:05:04.705041+00:00",
+ "collected_at": "2026-10-23T02:08:00.547913+00:00",
  "codex": {
   "observed_at": "2026-10-23T01:38:57.480Z",
   "windows": [
@@ -52,11 +52,11 @@
   ]
  },
  "claude": {
-  "observed_at": "2026-10-23T01:48:51.074000+00:00",
-  "tokens_last_5h": 1254319,
-  "tokens_today": 1808715,
-  "output_tokens_today": 74600,
-  "output_tokens_7d": 336050,
+  "observed_at": "2026-10-23T02:07:35.631000+00:00",
+  "tokens_last_5h": 1585288,
+  "tokens_today": 2139684,
+  "output_tokens_today": 97023,
+  "output_tokens_7d": 358473,
   "tokens_by_day": [
    {
     "day": "2026-10-17",
@@ -90,13 +90,13 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 1808715,
-    "output_tokens": 74600
+    "tokens": 2139684,
+    "output_tokens": 97023
    }
   ]
  },
  "antigravity": {
-  "observed_at": "2026-10-23T02:05:08.496283+00:00",
+  "observed_at": "2026-10-23T02:08:05.789300+00:00",
   "buckets": [
    {
     "group": "Gemini Models",
@@ -108,19 +108,19 @@
     "group": "Gemini Models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T07:05:08Z"
+    "resets_at": "2026-10-23T07:08:05Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "weekly",
     "used_percent": 0,
-    "resets_at": "2026-10-30T02:05:08Z"
+    "resets_at": "2026-10-30T02:08:05Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T07:05:08Z"
+    "resets_at": "2026-10-23T07:08:05Z"
    }
   ]
  }
