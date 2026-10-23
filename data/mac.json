@@ -1,6 +1,6 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-23T15:56:03.955724+00:00",
+ "collected_at": "2026-10-23T16:06:09.155158+00:00",
  "codex": {
   "observed_at": "2026-10-19T12:59:58.966Z",
   "windows": [
@@ -11,14 +11,9 @@
    }
   ],
   "tokens_last_5h": 0,
-  "tokens_today": 1158544,
-  "output_tokens_today": 2463,
+  "tokens_today": 0,
+  "output_tokens_today": 0,
   "tokens_by_day": [
-   {
-    "day": "2026-10-17",
-    "tokens": 0,
-    "output_tokens": 0
-   },
    {
     "day": "2026-10-18",
     "tokens": 0,
@@ -48,21 +43,21 @@
     "day": "2026-10-23",
     "tokens": 1158544,
     "output_tokens": 2463
+   },
+   {
+    "day": "2026-10-24",
+    "tokens": 0,
+    "output_tokens": 0
    }
   ]
  },
  "claude": {
   "observed_at": "2026-10-23T09:04:46.054000+00:00",
   "tokens_last_5h": 0,
-  "tokens_today": 6799579,
-  "output_tokens_today": 79526,
+  "tokens_today": 0,
+  "output_tokens_today": 0,
   "output_tokens_7d": 451312,
   "tokens_by_day": [
-   {
-    "day": "2026-10-17",
-    "tokens": 0,
-    "output_tokens": 0
-   },
    {
     "day": "2026-10-18",
     "tokens": 0,
@@ -92,6 +87,11 @@
     "day": "2026-10-23",
     "tokens": 6799579,
     "output_tokens": 79526
+   },
+   {
+    "day": "2026-10-24",
+    "tokens": 0,
+    "output_tokens": 0
    }
   ]
  },
