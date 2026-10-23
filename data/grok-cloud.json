@@ -1,24 +1,19 @@
 {
  "machine": "grok-cloud",
- "collected_at": "2026-10-23T11:21:22.447353+00:00",
+ "collected_at": "2026-10-23T21:09:40.342240+00:00",
  "codex": {
-  "observed_at": "2026-10-23T10:30:35.723Z",
+  "observed_at": "2026-10-23T21:09:38.232Z",
   "windows": [
    {
-    "used_percent": 3.0,
+    "used_percent": 0.0,
     "window_minutes": 10080,
-    "resets_at": "2026-10-29T19:11:34+00:00"
+    "resets_at": "2026-10-30T21:09:18+00:00"
    }
   ],
-  "tokens_last_5h": 11623693,
-  "tokens_today": 24072122,
-  "output_tokens_today": 159993,
+  "tokens_last_5h": 332133,
+  "tokens_today": 332133,
+  "output_tokens_today": 1118,
   "tokens_by_day": [
-   {
-    "day": "2026-10-17",
-    "tokens": 0,
-    "output_tokens": 0
-   },
    {
     "day": "2026-10-18",
     "tokens": 0,
@@ -46,23 +41,23 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 24072122,
-    "output_tokens": 159993
+    "tokens": 26086206,
+    "output_tokens": 173924
+   },
+   {
+    "day": "2026-10-24",
+    "tokens": 332133,
+    "output_tokens": 1118
    }
   ]
  },
  "claude": {
   "observed_at": "2026-10-23T06:34:43.645000+00:00",
-  "tokens_last_5h": 265395,
-  "tokens_today": 3018455,
-  "output_tokens_today": 111013,
+  "tokens_last_5h": 0,
+  "tokens_today": 0,
+  "output_tokens_today": 0,
   "output_tokens_7d": 348281,
   "tokens_by_day": [
-   {
-    "day": "2026-10-17",
-    "tokens": 0,
-    "output_tokens": 0
-   },
    {
     "day": "2026-10-18",
     "tokens": 0,
@@ -92,11 +87,16 @@
     "day": "2026-10-23",
     "tokens": 3018455,
     "output_tokens": 111013
+   },
+   {
+    "day": "2026-10-24",
+    "tokens": 0,
+    "output_tokens": 0
    }
   ]
  },
  "antigravity": {
-  "observed_at": "2026-10-23T11:21:25.610472+00:00",
+  "observed_at": "2026-10-23T21:09:44.907475+00:00",
   "buckets": [
    {
     "group": "Gemini Models",
@@ -108,19 +108,19 @@
     "group": "Gemini Models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T16:21:25Z"
+    "resets_at": "2026-10-24T02:09:44Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "weekly",
     "used_percent": 0,
-    "resets_at": "2026-10-30T11:21:25Z"
+    "resets_at": "2026-10-30T21:09:44Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T16:21:25Z"
+    "resets_at": "2026-10-24T02:09:44Z"
    }
   ]
  }
