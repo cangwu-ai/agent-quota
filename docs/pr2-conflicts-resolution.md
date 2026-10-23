@@ -1,8 +1,8 @@
 # PR#2 冲突解决交接
 
-本次依据 `origin/main` 的 `18fa0e3eb4c9527a144806684ea64c03812f4318` 与 `card-01` 的 `7958b3177b8a61c62e05d34953496109ffcb612c`。已通过 GitHub 只读查询确认远端 main/card-01 与这两个提交一致，PR#2 仍为 `mergeable: false`。本轮只修改工作区文件，没有在当前仓库执行 fetch/merge、切分支、提交、推送或修改仓库设置。
+本轮复核依据 `origin/main` 的 `18fa0e3eb4c9527a144806684ea64c03812f4318` 与 `card-01` 的 `d6df65d4c975cd01e6b231038f57d792f750fb04`。2026-10-23 通过 GitHub 只读查询确认 PR#2 的 base/head 与这两个提交一致，仍为 `mergeable: false`，`merge_commit_sha: null`。本轮只修改工作区文件，没有在当前仓库执行 fetch/merge、切分支、提交、推送或修改仓库设置。
 
-五个冲突文件在上次提交中已整合完成，本轮复核后保留。问题在于 main 的历史尚未进入 card-01；再次只追加普通文件提交仍无法满足验收。
+五个冲突文件在此前提交中已整合完成，本轮复核后保留。`git merge-base --is-ancestor origin/main HEAD` 返回 1，确认 main 的历史尚未进入 card-01；再次只追加普通文件提交仍无法满足验收。以下步骤由允许写入 `.git` 和推送的统一脚本执行，本轮没有达到远端 `MERGEABLE` 验收标准。
 
 - `.gitignore` 保留双方规则的并集：`__pycache__/`、`*.pyc`。与原 PR 内容相同，无需额外改动。
 - `index.html` 采用 main 的模块化仪表盘、手机布局、安全区、夜间模式、全屏/常亮及 PWA 入口；同步其前端模块、logo、manifest 和 maskable 图标，移除旧 `manifest.webmanifest`。
@@ -21,7 +21,7 @@ git diff --check
 
 本轮 JavaScript 41 项、Python 24 项通过，`bash -n scripts/prepare-pr2-merge.sh` 和 `git diff --check` 通过。
 
-新增 `tests/test_pr2_merge.py` 在 `/tmp` 创建独立仓库，从固定历史提交复现真实的五文件冲突，执行准备脚本后确认：
+已有 `tests/test_pr2_merge.py` 在 `/tmp` 创建独立仓库，从固定历史提交 `7958b3177b8a61c62e05d34953496109ffcb612c` 复现真实的五文件冲突，本轮重新执行准备脚本测试后确认：
 
 - `HEAD` 仍为原 card-01 提交，`MERGE_HEAD` 精确指向 main，尚未产生任何提交。
 - 未解决的索引条目全部清除，整个待提交树与已审查的 card-01 内容相同，保留 Claude/Grok 修复、前端及 PWA。
@@ -42,9 +42,13 @@ for test_file in tests/*.test.*; do
 done
 python3 -m unittest discover -s tests -v
 git diff --cached --check
-git rev-parse --verify MERGE_HEAD
+merge_target=$(git rev-parse origin/main)
+merge_source=$(git rev-parse HEAD)
+test "$(git rev-parse --verify MERGE_HEAD)" = "$merge_target"
 git commit -m "Merge origin/main into card-01, preserving Claude/Grok fixes"
-git merge-base --is-ancestor origin/main HEAD
+test "$(git rev-parse HEAD^1)" = "$merge_source"
+test "$(git rev-parse HEAD^2)" = "$merge_target"
+git merge-base --is-ancestor "$merge_target" HEAD
 git log -1 --format='%H %P'
 git push origin card-01
 gh pr view 2 --repo cangwu-ai/agent-quota --json mergeable
