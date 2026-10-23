@@ -1,6 +1,6 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-23T07:04:25.691678+00:00",
+ "collected_at": "2026-10-23T07:14:31.953355+00:00",
  "codex": {
   "observed_at": "2026-10-23T03:57:23.053Z",
   "windows": [
@@ -52,11 +52,11 @@
   ]
  },
  "claude": {
-  "observed_at": "2026-10-23T06:59:33.087000+00:00",
-  "tokens_last_5h": 953768,
-  "tokens_today": 953768,
-  "output_tokens_today": 9943,
-  "output_tokens_7d": 381729,
+  "observed_at": "2026-10-23T07:12:55.305000+00:00",
+  "tokens_last_5h": 2081558,
+  "tokens_today": 2081558,
+  "output_tokens_today": 20474,
+  "output_tokens_7d": 392260,
   "tokens_by_day": [
    {
     "day": "2026-10-17",
@@ -90,8 +90,8 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 953768,
-    "output_tokens": 9943
+    "tokens": 2081558,
+    "output_tokens": 20474
    }
   ]
  },
