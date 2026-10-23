@@ -1,18 +1,18 @@
 {
  "machine": "grok-cloud",
- "collected_at": "2026-10-23T05:58:09.812571+00:00",
+ "collected_at": "2026-10-23T06:04:19.916007+00:00",
  "codex": {
-  "observed_at": "2026-10-23T01:38:57.480Z",
+  "observed_at": "2026-10-23T06:04:11.003Z",
   "windows": [
    {
-    "used_percent": 1.0,
+    "used_percent": 2.0,
     "window_minutes": 10080,
     "resets_at": "2026-10-29T19:11:34+00:00"
    }
   ],
-  "tokens_last_5h": 4732655,
-  "tokens_today": 8457928,
-  "output_tokens_today": 57521,
+  "tokens_last_5h": 6752211,
+  "tokens_today": 10477484,
+  "output_tokens_today": 69680,
   "tokens_by_day": [
    {
     "day": "2026-10-17",
@@ -46,17 +46,17 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 8457928,
-    "output_tokens": 57521
+    "tokens": 10477484,
+    "output_tokens": 69680
    }
   ]
  },
  "claude": {
-  "observed_at": "2026-10-23T04:38:44.967000+00:00",
-  "tokens_last_5h": 1629899,
-  "tokens_today": 2407686,
-  "output_tokens_today": 101194,
-  "output_tokens_7d": 362644,
+  "observed_at": "2026-10-23T05:58:40.182000+00:00",
+  "tokens_last_5h": 1744175,
+  "tokens_today": 2521962,
+  "output_tokens_today": 103615,
+  "output_tokens_7d": 365065,
   "tokens_by_day": [
    {
     "day": "2026-10-17",
@@ -90,13 +90,13 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 2407686,
-    "output_tokens": 101194
+    "tokens": 2521962,
+    "output_tokens": 103615
    }
   ]
  },
  "antigravity": {
-  "observed_at": "2026-10-23T05:58:11.845689+00:00",
+  "observed_at": "2026-10-23T06:04:22.196542+00:00",
   "buckets": [
    {
     "group": "Gemini Models",
@@ -108,19 +108,19 @@
     "group": "Gemini Models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T10:58:11Z"
+    "resets_at": "2026-10-23T11:04:22Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "weekly",
     "used_percent": 0,
-    "resets_at": "2026-10-30T05:58:11Z"
+    "resets_at": "2026-10-30T06:04:22Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T10:58:11Z"
+    "resets_at": "2026-10-23T11:04:22Z"
    }
   ]
  }
