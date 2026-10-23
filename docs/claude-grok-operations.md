@@ -24,8 +24,15 @@ Grok 完整 token 已包含缓存和 reasoning 子集，不再额外加一次；
 [Grok 逐轮 usage 格式](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-shell/src/session/usage_file.rs)、
 [Claude usage 接口反馈](https://github.com/anthropics/claude-code/issues/31637)。
 
-Claude 默认从 `~/.claude/.credentials.json` 读取，Mac 缺少文件时读取 `Claude Code-credentials` 钥匙串；
-也支持已有 `CLAUDE_CODE_OAUTH_TOKEN`。Grok 默认读取 `~/.grok/auth.json` 的唯一第一方订阅登录；
+Claude 优先使用已有 `CLAUDE_CODE_OAUTH_TOKEN`；Mac 优先读取当前配置对应的钥匙串，
+读取失败才回退 `.credentials.json`，避免旧文件遮蔽有效登录。其他系统读取凭证文件。
+未指定目录时钥匙串名是 `Claude Code-credentials`；设置 `CLAUDE_CONFIG_DIR` 后，
+名称加上该环境变量原始值（NFC 规范化）的 SHA-256 前八位，不对路径展开或取真实路径。
+`CLAUDE_SECURESTORAGE_CONFIG_DIR` 若存在则优先选择凭证存储（不改变 token 日志目录）；
+空字符串明确使用默认存储。应使采集任务与实际 Claude CLI 使用相同环境变量，
+不遍历其他钥匙串项猜测账号。参见 [Claude 凭证管理](https://code.claude.com/docs/en/authentication#credential-management)
+及 [安全存储目录行为记录](https://github.com/anthropics/claude-code/issues/79223)。
+Grok 默认读取 `~/.grok/auth.json` 的唯一第一方订阅登录；
 API key 不代表 SuperGrok 订阅，不用于本查询。多个订阅登录时不猜测账户。
 配置目录可通过 `CLAUDE_CONFIG_DIR`、`GROK_HOME` 指定。
 
@@ -70,6 +77,10 @@ Mac 使用 `QUOTA_MACHINE=mac`。保留原有发布频率（Mac 每 10 分钟、
 | unsupported | 额度暂不可读 | 检查客户端接口是否变化；可按真实读数手动回退 |
 
 前端取 Mac、云端和手动读数中较新的有效额度，已结束周期不继续作为本周期百分比。
+Claude 的周额度与 5 小时窗口分别标注，并显示各自重置倒计时；“已用 / 剩余”切换同时作用于两个窗口。
+只返回一个窗口时，保留该窗口真实读数，并在另一窗口注明“接口未返回此窗口”或“周期已结束，等待采集”。
+只有 5 小时读数时直接标为“5 小时”，不冒充周额度；手机横屏仍保留第二窗口。
+两台设备均无有效额度时，失败原因使用较新的一次检查，不让旧周期或旧设备的登录状态遮蔽新原因。
 旧读数保留时间和过期提示；没有百分比时 token 仍独立显示。
 手动更新方式（下列数值仅为命令示例，不是实际用量）：
 
@@ -99,3 +110,19 @@ Chrome/Chromium 在此沙箱均因 socket 权限无法启动，未完成浏览�
 
 本次仅修改仓库文件，没有提交、推送、修改外部 ops/定时任务或线上数据。
 线上验收仍需部署四个脚本、恢复有效登录，并在网页核对真实额度及重置时间；当前不能声称线上已恢复。
+
+## 2026-10-23 续查证据
+
+本地 `origin/data` 中，Mac 文件采集于 `2026-10-23T11:13:07Z`，云端文件采集于
+`2026-10-23T11:21:22Z`。两份文件中 Claude 都只有 token、没有 `windows` 和 `quota_status`；
+Grok 都无节点。这与仓库新版采集器无论成功、未配置或失败都会返回 `quota_status` 的行为不符，
+说明这些快照尚未使用新版接入链路。只发布网页不能解决这个部署缺口，应核对定时任务所调用脚本的真实路径。
+
+本次只读运行仓库采集器：Claude 返回 `request_failed`，仍有今日 token；Grok 返回
+`auth_required`。Grok 文件虽有较新的修改时间，日志内实际轮次结束日期在 10 月 13–16 日，
+不属于当前七个北京时间自然日，不能算作本周或今日用量。不可用额度没有被填写为零。
+
+新增回归先复现再修复了 Mac 选择凭证、部分窗口提示、两个窗口各自重置时间、百分比模式切换及
+跨设备失败原因选择。完整回归为 Python 28 项、Node 47 项；公开白名单仍不输出登录材料。
+Chrome 使用独立临时目录后仍因沙箱 `setsockopt: Operation not permitted` 无法启动，
+真实页面函数已由 Node 执行，浏览器布局验收仍受此限制。

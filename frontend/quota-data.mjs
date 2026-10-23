@@ -61,6 +61,9 @@ function normalize(file, source, now) {
       window_minutes: windowMinutes,
       resets_at: row.resets_at ?? legacy.resets_at ?? (legacy.resets_on ? `${legacy.resets_on}T00:00:00+08:00` : null),
       quota_status: row.quota_status ?? legacy.quota_status,
+      // A failed check has no successful quota observation. Its file heartbeat
+      // dates the diagnosis without making an old percentage look fresh.
+      quota_checked_at: timestamp(row.quota_checked_at ?? legacy.quota_checked_at ?? file.collected_at ?? file.updated_at ?? row.updated_at),
       tokens, tokens_by_day: byDay, tokens_observed_at: tokensAt,
       updated_at: updatedAt, staleLevel: stale(updatedAt, now),
     };

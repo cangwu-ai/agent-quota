@@ -3,6 +3,7 @@
 These internal usage APIs are also used by the installed clients. Unknown
 responses stay unavailable. No model prompts, login flows or token refreshes.
 """
+import hashlib
 import json
 import math
 import os
@@ -10,6 +11,7 @@ from http.client import HTTPException
 from pathlib import Path
 import subprocess
 import sys
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -93,14 +95,25 @@ def credentials(provider, root):
         token = os.environ.get('CLAUDE_CODE_OAUTH_TOKEN')
         if token:
             return {'accessToken': token}
-        raw = read_json(root / '.credentials.json')
-        if raw is None and sys.platform == 'darwin':
+        # Match the CLI's store selection, including an explicitly empty override.
+        # The Keychain suffix hashes the literal setting (NFC), not a resolved path.
+        selected = os.environ.get('CLAUDE_SECURESTORAGE_CONFIG_DIR', os.environ.get('CLAUDE_CONFIG_DIR'))
+        storage = root
+        if 'CLAUDE_SECURESTORAGE_CONFIG_DIR' in os.environ:
+            storage = Path(selected) if selected else Path.home() / '.claude'
+        raw = None
+        if sys.platform == 'darwin':
+            service = 'Claude Code-credentials'
+            if selected:
+                service += '-' + hashlib.sha256(unicodedata.normalize('NFC', selected).encode('utf-8')).hexdigest()[:8]
             try:
-                result = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+                result = subprocess.run(['security', 'find-generic-password', '-s', service, '-w'],
                                         capture_output=True, text=True, timeout=5, check=True)
                 raw = json.loads(result.stdout)
             except (OSError, ValueError, subprocess.SubprocessError):
-                return None
+                pass
+        if not isinstance(raw, dict):
+            raw = read_json(storage / '.credentials.json')
         return raw.get('claudeAiOauth') if isinstance(raw, dict) else None
     raw = read_json(root / 'auth.json')
     if not isinstance(raw, dict):

@@ -30,3 +30,19 @@
 真实零与缺数据不同；额度查询成功不代表本地 token 观测更新；旧 snapshot 不能把昨日 token 标成今日；
 Grok usage.json 与 updates.jsonl 同时存在时不能双计；一个服务失败不能阻断其他服务发布。
 当前沙箱外网代理不可连接，不能声称完成线上部署或实时账户验证。
+
+## 2026-10-23 续查计划
+
+当前 `origin/data` 两个机器文件都没有 Claude/Grok 的 `quota_status`；仓库中的接入代码
+并未反映在这些快照中。只改仓库文件，不修改外部采集目录或发布数据。
+
+- [x] `tests/test_providers.py` 先复现 Mac 旧凭证文件遮蔽钥匙串、配置目录未参与钥匙串名称的问题；
+  修复 `provider_usage.credentials`，支持当前 CLI 的安全存储目录选择，保留只读、文件回退和环境令牌优先级。
+- [x] `tests/dashboard-page.test.mjs` 运行真实页面渲染函数，复现单窗口误标、窗口缺失无原因、
+  5 小时百分比切换和独立重置时间缺失；修改 `dashboard-model.mjs`、`index.html`，保持同次观测选择和未知值语义。
+- [x] 执行完整 Python / Node 回归、只读本机采集到公开白名单验证及 `git diff --check`；
+  更新操作说明，明确登录、网络、部署的实际限制。
+
+续查结果：Python 28/28，Node 47/47；真实本地快照经过公开白名单、前端 loader 和卡片模型后，
+Claude 保留 token 并显示“额度读取失败”，Grok 显示“登录已失效”且 token 保持未知。
+独立只读审查未发现重要问题；浏览器仍受沙箱 socket 权限限制。没有提交、推送或部署。

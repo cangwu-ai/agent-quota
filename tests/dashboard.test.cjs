@@ -118,6 +118,20 @@ test('malformed values remain unknown and status survives normalization', async 
   assert.equal(p.result.totalTokens, 0);
 });
 
+test('missing quota explains the newest failed check across devices', async () => {
+  const p = await dashboard({ mac: { collected_at: before, grok: { quota_status: 'auth_required' } },
+    'grok-cloud': { collected_at: fresh, grok: { quota_status: 'request_failed' } } });
+  assert.equal(p.card('grok').reason, '额度读取失败');
+});
+
+test('expired old quota cannot hide a newer expired-login diagnosis', async () => {
+  const p = await dashboard({ mac: { collected_at: before, claude: { used_percent: 20,
+    quota_status: 'available', quota_observed_at: past, resets_at: past } },
+    'grok-cloud': { collected_at: fresh, claude: { quota_status: 'auth_required' } } });
+  assert.equal(p.card('claude').usedPct, null);
+  assert.equal(p.card('claude').reason, '登录已失效');
+});
+
 test('fetch failures keep the last successful subscription snapshot', async () => {
   const p = await dashboard({ mac: { collected_at: fresh, claude: { used_percent: 30, quota_observed_at: fresh } } });
   p.files.mac = new Error('offline');

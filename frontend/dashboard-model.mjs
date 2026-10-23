@@ -84,7 +84,7 @@ const isManual = pool => pool.source === 'manual' || pool.manual === true;
 /** Window from the field, or from the id suffix of the pools protocol ("codex:5h"). */
 const windowOf = pool => pool.window ?? pool.id?.split(':').at(-1);
 const isShortWindow = pool => windowOf(pool) === '5h' || (pool.window_minutes != null && pool.window_minutes <= 300);
-const windowLabel = pool => isManual(pool) ? '本周期' : (windowOf(pool) === 'weekly' || pool.window_minutes === 10080) ? '本周' : '本周期';
+const windowLabel = pool => isManual(pool) ? '本周期' : isShortWindow(pool) ? '5 小时' : (windowOf(pool) === 'weekly' || pool.window_minutes === 10080) ? '本周' : '本周期';
 
 /** Latest reading wins; non-subscription providers prefer auto. Ties prefer auto, then most-used bucket. */
 function pickReading(readings, newestManual = false) {
@@ -138,11 +138,21 @@ export function buildCards(pools, now = Date.now()) {
     const shortRows = readings.filter(p => isShortWindow(p) && (!subscription || (main && !isManual(main)
       && p.source === main.source && p.updated_at === main.updated_at)));
     const short = main && !isShortWindow(main) ? pickReading(shortRows, subscription) : null;
-    const status = rows.find(p => p.quota_status && p.quota_status !== 'not_configured')?.quota_status ?? rows[0]?.quota_status;
-    const reason = !main && subscription ? allReadings.length ? '周期已结束' : ({
+    let missingWindow = null, missingWindowReason = null;
+    if (provider === 'claude' && main && !isManual(main) && !short) {
+      const shortOnly = isShortWindow(main);
+      missingWindow = shortOnly ? '本周额度' : '5 小时窗口';
+      const missingRows = allReadings.filter(p => p.source === main.source && p.updated_at === main.updated_at
+        && (shortOnly ? windowLabel(p) === '本周' : isShortWindow(p)));
+      missingWindowReason = missingRows.length ? '周期已结束，等待采集' : '接口未返回此窗口';
+    }
+    const checks = rows.filter(p => p.quota_status && p.quota_status !== 'not_configured')
+      .sort((a, b) => (Date.parse(b.quota_checked_at) || 0) - (Date.parse(a.quota_checked_at) || 0));
+    const status = checks[0]?.quota_status ?? rows.find(p => p.quota_status)?.quota_status;
+    const reason = !main && subscription ? ({
       not_configured: '待登录采集', auth_required: '登录已失效', request_failed: '额度读取失败',
       rate_limited: '接口限流', unsupported: '额度暂不可读',
-    }[status] ?? (tokens != null || byDay.size ? '仅有 token 记录' : '等待采集')) : null;
+    }[status] ?? (allReadings.length ? '周期已结束' : tokens != null || byDay.size ? '仅有 token 记录' : '等待采集')) : null;
     // Every observation shown on the card (ring, 5h figure, tokens) counts; the oldest one sets its age.
     const shown = [...(main ? [main.updated_at ?? null] : []), ...(short ? [short.updated_at ?? null] : []), ...tokenTimes];
     const staleAt = oldestTime(shown);
@@ -160,6 +170,9 @@ export function buildCards(pools, now = Date.now()) {
       readingAt: main?.updated_at ?? null,
       manual: !!main && isManual(main),
       shortPct: short?.used_pct ?? null,
+      shortResetsAt: short?.resets_at ?? null,
+      missingWindow,
+      missingWindowReason,
       staleAt,
       stale: shown.length ? staleOf(staleAt, now) : null,
     };

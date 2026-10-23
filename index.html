@@ -245,6 +245,7 @@ button:focus-visible, .num:focus-visible { outline: 2px solid var(--focus); outl
   .g-tok [data-f="tok"] { font-size: 15px; white-space: nowrap; }
   .g-tok .none { font-size: 11px; white-space: nowrap; }
   .g-row.reset, .g-row.extra { display: none; }
+  .gauge[data-provider="claude"] .g-row.extra { display: flex; white-space: normal; }
   .chip { padding: 0 6px; font-size: 10px; }
 }
 /* 平滑过渡；减少动态效果时直接跳到终值 */
@@ -381,8 +382,9 @@ function cardSkeleton(card) {
     <div class="g-foot">
       <div class="g-tok"><span>今日 token</span><span data-f="tok"></span></div>
       <div class="g-row chips" data-f="chips"></div>
-      <div class="g-row reset" data-f="reset-row"><span>重置</span><b data-f="reset"></b></div>
+      <div class="g-row reset" data-f="reset-row"><span data-f="reset-k">重置</span><b data-f="reset"></b></div>
       <div class="g-row extra" data-f="extra-row"><span data-f="extra-k"></span><b data-f="extra-v"></b></div>
+      <div class="g-row reset" data-f="short-reset-row" hidden><span>5 小时重置</span><b data-f="short-reset"></b></div>
     </div>`;
   return el;
 }
@@ -426,16 +428,22 @@ function updateCard(el, card, now, loading) {
   setHtml(f('chips'), chips || '&nbsp;');
 
   const reset = untilTime(card.resetsAt, now);
+  f('reset-k').textContent = `${card.windowLabel}重置`;
   f('reset-row').hidden = !reset;
   f('reset').textContent = reset ?? '';
   f('reset').title = card.resetsAt ? absoluteTime(card.resetsAt) : '';
 
   let extra = null;
-  if (card.shortPct != null) extra = ['5 小时窗口', `${Math.round(card.shortPct)}%`];
+  if (card.shortPct != null) extra = ['5 小时窗口', mode === 'used' ? `已用 ${Math.round(card.shortPct)}%` : `剩余 ${100 - Math.round(card.shortPct)}%`];
+  else if (card.missingWindow) extra = [card.missingWindow, esc(card.missingWindowReason)];
   else if (card.manual) extra = ['手动填写', timeTag(card.readingAt, now)];
   else if (has) extra = ['自动采集', card.readingAt ? timeTag(card.readingAt, now) : '时间未知'];
   f('extra-row').hidden = !extra;
   if (extra) { f('extra-k').textContent = extra[0]; setHtml(f('extra-v'), extra[1]); }
+  const shortReset = untilTime(card.shortResetsAt, now);
+  f('short-reset-row').hidden = !shortReset;
+  f('short-reset').textContent = shortReset ?? '';
+  f('short-reset').title = card.shortResetsAt ? absoluteTime(card.shortResetsAt) : '';
 }
 
 function renderGauges(cards, now, loading) {

@@ -243,6 +243,54 @@ class ProviderTests(unittest.TestCase):
             self.assertEqual(result['accessToken'], 'private-token')
             self.assertEqual(security.call_args.args[0][0], 'security')
 
+    def test_mac_keychain_wins_over_stale_plaintext_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / '.credentials.json').write_text('{"claudeAiOauth":{"accessToken":"stale-token","expiresAt":1}}')
+            completed = subprocess.CompletedProcess([], 0, stdout='{"claudeAiOauth":{"accessToken":"current-token"}}')
+            with patch.object(providers.sys, 'platform', 'darwin'), patch.dict('os.environ', {}, clear=True), \
+                    patch.object(providers.subprocess, 'run', return_value=completed), \
+                    patch.object(providers, 'urlopen', return_value=io.BytesIO(b'{"seven_day":{"utilization":21},"five_hour":{"utilization":7}}')) as request:
+                result = providers.account_quota('claude', root, NOW)
+            self.assertEqual(result['quota_status'], 'available')
+            self.assertEqual([w['used_percent'] for w in result['windows']], [21, 7])
+            self.assertEqual(request.call_args.args[0].get_header('Authorization'), 'Bearer current-token')
+
+    def test_mac_keychain_uses_selected_config_directory(self):
+        # The CLI hashes the literal directory setting; do not normalize it as a path.
+        for env, expected in [
+            ({'CLAUDE_CONFIG_DIR': '/profiles/work'}, 'Claude Code-credentials-2ea9e238'),
+            ({'CLAUDE_CONFIG_DIR': '/profiles/work', 'CLAUDE_SECURESTORAGE_CONFIG_DIR': ''}, 'Claude Code-credentials'),
+            ({'CLAUDE_CONFIG_DIR': '/profiles/other', 'CLAUDE_SECURESTORAGE_CONFIG_DIR': '/profiles/work'}, 'Claude Code-credentials-2ea9e238'),
+        ]:
+            with self.subTest(env=env), tempfile.TemporaryDirectory() as tmp:
+                completed = subprocess.CompletedProcess([], 0, stdout='{"claudeAiOauth":{"accessToken":"private-token"}}')
+                with patch.object(providers.sys, 'platform', 'darwin'), patch.dict('os.environ', env, clear=True), \
+                        patch.object(providers.subprocess, 'run', return_value=completed) as security:
+                    providers.credentials('claude', Path(tmp))
+                self.assertEqual(security.call_args.args[0][3], expected)
+
+    def test_mac_keychain_unavailable_uses_plaintext_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / '.credentials.json').write_text('{"claudeAiOauth":{"accessToken":"file-token"}}')
+            with patch.object(providers.sys, 'platform', 'darwin'), patch.dict('os.environ', {}, clear=True), \
+                    patch.object(providers.subprocess, 'run', side_effect=subprocess.CalledProcessError(44, 'security')):
+                result = providers.credentials('claude', root)
+            self.assertEqual(result['accessToken'], 'file-token')
+
+    def test_secure_storage_override_reads_selected_file_without_moving_logs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            storage = root / 'auth'
+            storage.mkdir()
+            (root / '.credentials.json').write_text('{"claudeAiOauth":{"accessToken":"wrong-account"}}')
+            (storage / '.credentials.json').write_text('{"claudeAiOauth":{"accessToken":"selected-account"}}')
+            with patch.object(providers.sys, 'platform', 'linux'), \
+                    patch.dict('os.environ', {'CLAUDE_SECURESTORAGE_CONFIG_DIR': str(storage)}, clear=True):
+                result = providers.credentials('claude', root)
+            self.assertEqual(result['accessToken'], 'selected-account')
+
 
 if __name__ == '__main__':
     unittest.main()
