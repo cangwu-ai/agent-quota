@@ -1,8 +1,8 @@
 {
  "machine": "grok-cloud",
- "collected_at": "2026-10-23T06:13:17.672897+00:00",
+ "collected_at": "2026-10-23T06:21:08.453745+00:00",
  "codex": {
-  "observed_at": "2026-10-23T06:04:11.003Z",
+  "observed_at": "2026-10-23T06:20:58.937Z",
   "windows": [
    {
     "used_percent": 2.0,
@@ -10,9 +10,9 @@
     "resets_at": "2026-10-29T19:11:34+00:00"
    }
   ],
-  "tokens_last_5h": 6752211,
-  "tokens_today": 10477484,
-  "output_tokens_today": 69680,
+  "tokens_last_5h": 8207291,
+  "tokens_today": 12448429,
+  "output_tokens_today": 82082,
   "tokens_by_day": [
    {
     "day": "2026-10-17",
@@ -46,17 +46,17 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 10477484,
-    "output_tokens": 69680
+    "tokens": 12448429,
+    "output_tokens": 82082
    }
   ]
  },
  "claude": {
-  "observed_at": "2026-10-23T05:58:40.182000+00:00",
-  "tokens_last_5h": 1744175,
-  "tokens_today": 2521962,
-  "output_tokens_today": 103615,
-  "output_tokens_7d": 365065,
+  "observed_at": "2026-10-23T06:14:04.239000+00:00",
+  "tokens_last_5h": 1863756,
+  "tokens_today": 2753060,
+  "output_tokens_today": 106934,
+  "output_tokens_7d": 368384,
   "tokens_by_day": [
    {
     "day": "2026-10-17",
@@ -90,13 +90,13 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 2521962,
-    "output_tokens": 103615
+    "tokens": 2753060,
+    "output_tokens": 106934
    }
   ]
  },
  "antigravity": {
-  "observed_at": "2026-10-23T06:13:20.167593+00:00",
+  "observed_at": "2026-10-23T06:21:10.692382+00:00",
   "buckets": [
    {
     "group": "Gemini Models",
@@ -108,19 +108,19 @@
     "group": "Gemini Models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T11:13:19Z"
+    "resets_at": "2026-10-23T11:21:10Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "weekly",
     "used_percent": 0,
-    "resets_at": "2026-10-30T06:13:19Z"
+    "resets_at": "2026-10-30T06:21:10Z"
    },
    {
     "group": "Claude and GPT models",
     "window": "5h",
     "used_percent": 0,
-    "resets_at": "2026-10-23T11:13:19Z"
+    "resets_at": "2026-10-23T11:21:10Z"
    }
   ]
  }
