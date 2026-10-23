@@ -20,7 +20,7 @@ class PipelineTests(unittest.TestCase):
             for p in result['pools']:
                 if p['used_pct'] is not None:
                     self.assertAlmostEqual(p['used_pct'] + p['remaining_pct'], 100)
-                if p['provider'] in ('antigravity', 'grok'):
+                if p['provider'] in ('antigravity', 'grok') and (raw.get(p['provider']) or {}).get('tokens_today') is None:
                     self.assertIsNone(p['tokens'])
 
     def test_invalid_inputs(self):

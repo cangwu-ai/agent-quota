@@ -23,6 +23,11 @@
 | pools[].updated_at | UTC ISO 8601/null | 实际源数据 observed_at，非发布心跳；缺观测为 null |
 | pools[].resets_at | UTC ISO 8601/null | 自动窗口重置时间 |
 
+Claude/Grok 新增兼容字段 `used_percent`、`resets_at`、`windows[]`、`quota_status`，
+以及独立的 `quota_observed_at`、`tokens_observed_at`。额度接口成功不会刷新 token 观测时间。
+窗口仍使用 `used_percent/window_minutes/resets_at`；Grok 未知或月账期时 window_minutes 可为 null。
+状态枚举、来源和部署见 [Claude / Grok 数据接入](claude-grok-operations.md)。
+
 Codex token 从会话累计计数取增量；Claude 从回复 usage 汇总，包含缓存 token，按消息及请求去重。
 兼容字段 `tokens_last_5h` 为近五小时，`tokens_by_day` 为最近七个北京时间自然日。
 这些是本地日志统计，不代表服务商计费总量；多个来源日志重复时不能简单相加。
@@ -30,6 +35,8 @@ Codex token 从会话累计计数取增量；Claude 从回复 usage 汇总，包
 前端应分别检查文件心跳与池观测时间，超过 30 分钟或时间未知均不能作为新鲜读数。
 
 ## 现状盘点
+
+以下为上次链路审计的历史状态，不代表当前脚本能力；本次 Claude/Grok 修复情况见上方接入文档。
 
 本次读取的 data ref、时间区间和机器可读结果见 [data-audit.json](data-audit.json)。
 
@@ -59,7 +66,7 @@ Grok 无实际用量输入，不能把云端 Codex 的 token 当成 Grok。
 
 ## 部署与复核
 
-`scripts/quota-collect`、`scripts/quota-publish` 与 `scripts/quota_schema.py` 必须放在同一运行目录。
+`scripts/quota-collect`、`scripts/quota-publish`、`scripts/quota_schema.py` 与 `scripts/provider_usage.py` 必须放在同一运行目录。
 保留既有 `quota-set` 入口，设置 `QUOTA_MACHINE=mac` 或 `grok-cloud`；Antigravity 仍需原有登录和显式启用。
 本次只修改工作仓库，不修改外部 ops 或 Mac 定时任务，不 push data 分支。
 上线需由运行环境部署这些脚本，并确认每十分钟执行发布器；不要只运行带去重的 `collect --save`。
@@ -69,6 +76,7 @@ Grok 无实际用量输入，不能把云端 Codex 的 token 当成 Grok。
 
 ```sh
 python3 -m unittest discover -s tests -v
+node tests/dashboard.test.cjs
 python3 scripts/audit-data.py --ref origin/data
 ```
 

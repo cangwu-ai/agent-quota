@@ -1,6 +1,7 @@
 """Public allowlist and additive schema; unknown usage is never converted to zero."""
 from datetime import datetime, timezone
 import math
+from provider_usage import QUOTA_STATUSES
 
 
 def utc(value):
@@ -43,40 +44,48 @@ def public_snapshot(snap):
             result['pools'].append(pool(provider, provider, provider.title(), None, None, None))
             continue
         clean = {}
-        for key in ('observed_at',):
+        for key in ('observed_at', 'quota_observed_at', 'tokens_observed_at'):
             if raw.get(key):
                 clean[key] = utc(raw[key])
+        if provider in ('claude', 'grok'):
+            if raw.get('quota_status') in QUOTA_STATUSES:
+                clean['quota_status'] = raw['quota_status']
+            if 'used_percent' in raw:
+                clean['used_percent'] = number(raw['used_percent'], 100)
+            if raw.get('resets_at'):
+                clean['resets_at'] = utc(raw['resets_at'])
         for key in ('tokens_last_5h', 'tokens_today', 'output_tokens_today', 'output_tokens_7d'):
             if key in raw:
                 clean[key] = number(raw[key])
         if 'tokens_by_day' in raw:
             clean['tokens_by_day'] = [dict(day=datetime.strptime(d['day'], '%Y-%m-%d').strftime('%Y-%m-%d'),
                 tokens=number(d['tokens']), output_tokens=number(d.get('output_tokens'))) for d in raw['tokens_by_day']]
-        entries = raw.get('windows', []) if provider == 'codex' else raw.get('buckets', []) if provider == 'antigravity' else [raw]
+        has_windows = provider in ('codex', 'claude', 'grok') and isinstance(raw.get('windows'), list) and bool(raw['windows'])
+        entries = raw['windows'] if has_windows else raw.get('buckets', []) if provider == 'antigravity' else [raw]
         safe_entries = []
         for entry in entries:
             # Only fixed provider group names can reach the public output.
-            group = entry.get('group')
+            group = entry.get('group') if provider == 'antigravity' else None
             if provider == 'antigravity' and group not in ('Gemini Models', 'Claude and GPT models'):
                 raise ValueError('unknown model group')
-            window = entry.get('window') if provider == 'antigravity' else entry.get('window_minutes') if provider == 'codex' else None
+            window = entry.get('window') if provider == 'antigravity' else entry.get('window_minutes') if has_windows else None
             if provider == 'antigravity' and window not in ('weekly', '5h'):
                 raise ValueError('unknown window')
-            if provider == 'codex':
+            if has_windows:
                 number(window)
             ident = provider + (f':{group}:{window}' if group else f':{window}' if window is not None else '')
-            p = pool(provider, ident, group or provider.title(), entry.get('used_percent'), raw.get('tokens_today'), raw.get('observed_at'))
+            p = pool(provider, ident, group or provider.title(), entry.get('used_percent'), raw.get('tokens_today'), raw.get('quota_observed_at') or raw.get('observed_at'))
             p['resets_at'] = utc(entry['resets_at']) if entry.get('resets_at') else None
             p['tokens_scope'] = 'provider-source'  # shared by windows, never sum these values
             result['pools'].append(p)
             e = dict(used_percent=p['used_pct'], resets_at=p['resets_at'])
-            if provider == 'codex':
+            if has_windows:
                 e['window_minutes'] = window
             elif provider == 'antigravity':
                 e.update(group=group, window=window)
             safe_entries.append(e)
-        if provider in ('codex', 'antigravity'):
-            clean['windows' if provider == 'codex' else 'buckets'] = safe_entries
+        if has_windows or provider in ('codex', 'antigravity'):
+            clean['buckets' if provider == 'antigravity' else 'windows'] = safe_entries
         result[provider] = clean
     return result
 

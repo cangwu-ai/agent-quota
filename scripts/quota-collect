@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""quota-collect：从本机日志采集 Codex 与 Claude 的用量，写成一份快照。
+"""quota-collect：读取订阅额度及本机日志用量，写成一份快照。
 
   quota-collect                 打印快照（JSON）
   quota-collect --save          另存到 ai-studio/quota/<机器名>.json
@@ -7,29 +7,27 @@
 Codex：读 $CODEX_HOME/sessions 里最新一条 rate_limits（周用量百分比、重置时间）。
 Claude：汇总 Claude 配置目录 projects/ 下各会话的 token 用量（近 5 小时、今天、近 7 天按天）。
 Antigravity：agy -p /usage 返回各模型组的周 / 5 小时剩余比例（本地命令，不耗 token）。
-Claude 日志里没有「占 Max 额度百分比」，这一项只能在仪表盘上手动填。
+Claude / Grok：使用已有登录凭证只读查询额度；Grok Build 日志汇总近七天 token。
+缺少登录或请求失败时保留未知，支持 quota-set 手动回退。
 """
 import json
 import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from provider_usage import account_quota, grok_tokens, json_lines, timestamp, valid_number
 
 HOME = Path.home()
 CODEX_HOME = Path(os.environ.get("CODEX_HOME", HOME / ".codex"))
 CLAUDE_HOME = Path(os.environ.get("CLAUDE_CONFIG_DIR", HOME / ".claude"))
+GROK_HOME = Path(os.environ.get("GROK_HOME", HOME / ".grok"))
 STUDIO = Path(os.environ.get("STUDIO_ROOT", HOME / "quota"))
 MACHINE = os.environ.get("QUOTA_MACHINE") or ("grok-cloud" if Path("/workspace").exists() else "mac")
 TZ = timezone(timedelta(hours=8))  # 按北京时间分天
 
 
 def lines(path):
-    with open(path, encoding="utf-8", errors="replace") as f:
-        for line in f:
-            try:
-                yield json.loads(line)
-            except ValueError:
-                continue
+    yield from json_lines(path)
 
 
 def iso(ts):
@@ -148,21 +146,26 @@ def claude():
     output_7d = 0
     seen = set()
     newest = None
-    for path in (CLAUDE_HOME / "projects").glob("*/*.jsonl"):
+    for path in (CLAUDE_HOME / "projects").rglob("*.jsonl"):
         if datetime.fromtimestamp(path.stat().st_mtime, timezone.utc) < since:
             continue
-        for d in lines(path):
+        for index, d in enumerate(lines(path)):
             msg = d.get("message")
             if not isinstance(msg, dict) or not isinstance(msg.get("usage"), dict) or not d.get("timestamp"):
                 continue
-            key = (msg.get("id"), d.get("requestId"))
+            key = (msg.get("id"), d.get("requestId")) if msg.get("id") else d.get("uuid") or (str(path), index)
             if key in seen:  # 同一条回复会按内容块重复记录
                 continue
             seen.add(key)
-            t = datetime.fromisoformat(d["timestamp"].replace("Z", "+00:00"))
-            if t < since:
+            try:
+                t = timestamp(d['timestamp'])
+            except (ValueError, TypeError, AttributeError, OverflowError, OSError):
+                continue
+            if t < since or t > now:
                 continue
             u = msg["usage"]
+            if any(not valid_number(u[k]) for k in ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens") if u.get(k) is not None):
+                continue
             total = sum(u.get(k) or 0 for k in ("input_tokens", "output_tokens",
                                                 "cache_creation_input_tokens", "cache_read_input_tokens"))
             day = t.astimezone(TZ).strftime("%Y-%m-%d")
@@ -173,17 +176,25 @@ def claude():
             if t >= now - timedelta(hours=5):
                 last5h += total
             newest = max(newest or t, t)
+    quota = account_quota('claude', CLAUDE_HOME, now)
     if newest is None:
-        return None
+        return quota
     today = now.astimezone(TZ).strftime("%Y-%m-%d")
     return {
         "observed_at": newest.isoformat(),
+        "tokens_observed_at": newest.isoformat(),
         "tokens_last_5h": last5h,
         "tokens_today": days.get(today, [0, 0])[0],
         "output_tokens_today": days.get(today, [0, 0])[1],
         "output_tokens_7d": output_7d,
         "tokens_by_day": [{"day": k, "tokens": v[0], "output_tokens": v[1]} for k, v in sorted(days.items())],
+        **quota,
     }
+
+
+def grok():
+    now = datetime.now(timezone.utc)
+    return {**(grok_tokens(GROK_HOME, now) or {}), **account_quota('grok', GROK_HOME, now)}
 
 
 def main():
@@ -193,6 +204,7 @@ def main():
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "codex": codex(),
         "claude": claude(),
+        "grok": grok(),
         "antigravity": antigravity(),
     }
     text = json.dumps(snap, ensure_ascii=False, indent=1)
