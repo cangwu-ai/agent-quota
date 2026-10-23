@@ -1,6 +1,6 @@
 {
  "machine": "mac",
- "collected_at": "2026-10-23T08:45:40.782199+00:00",
+ "collected_at": "2026-10-23T08:55:47.879118+00:00",
  "codex": {
   "observed_at": "2026-10-23T03:57:23.053Z",
   "windows": [
@@ -10,7 +10,7 @@
     "resets_at": "2026-10-29T19:11:34+00:00"
    }
   ],
-  "tokens_last_5h": 1158544,
+  "tokens_last_5h": 88243,
   "tokens_today": 1158544,
   "output_tokens_today": 2463,
   "tokens_by_day": [
@@ -52,11 +52,11 @@
   ]
  },
  "claude": {
-  "observed_at": "2026-10-23T08:39:46.020000+00:00",
-  "tokens_last_5h": 4284543,
-  "tokens_today": 4284543,
-  "output_tokens_today": 47219,
-  "output_tokens_7d": 419005,
+  "observed_at": "2026-10-23T08:55:48.424000+00:00",
+  "tokens_last_5h": 6088825,
+  "tokens_today": 6088825,
+  "output_tokens_today": 77919,
+  "output_tokens_7d": 449705,
   "tokens_by_day": [
    {
     "day": "2026-10-17",
@@ -90,8 +90,8 @@
    },
    {
     "day": "2026-10-23",
-    "tokens": 4284543,
-    "output_tokens": 47219
+    "tokens": 6088825,
+    "output_tokens": 77919
    }
   ]
  },
